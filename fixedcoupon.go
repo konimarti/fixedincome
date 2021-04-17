@@ -10,7 +10,7 @@ type FixedCouponBond struct {
 
 // Accrued calculated the accrued interest
 func (b *FixedCouponBond) Accrued() float64 {
-	return b.CouponRate / float64(b.Schedule.GetFrequency()) * b.Schedule.DaysSinceLastCouponInYears()
+	return b.CouponRate * b.Schedule.DaysSinceLastCouponInYears()
 }
 
 // Pricing returns the "dirty" and the "clean" prices (adjusted for accrued interest)
