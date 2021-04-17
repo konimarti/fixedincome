@@ -12,41 +12,41 @@ import (
 func TestYields(t *testing.T) {
 
 	testData := []struct {
-		B           bonds.Bond
-		Quote       float64
-		ExpectedIRR float64
-		ExpectedZsp float64
+		B              bonds.Bond
+		Quote          float64
+		ExpectedIRR    float64
+		ExpectedSpread float64
 	}{
 		{
 			// bond details
 			// ISIN CH0224396983 (quote per 2021-04-01)
-			B: &bonds.FixedCouponBond{
+			B: bonds.Bond{
 				Schedule: bonds.Maturities{
-					QuoteDate:    time.Date(2021, 4, 1, 0, 0, 0, 0, time.UTC),
-					MaturityDate: time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC),
-					Frequency:    1,
+					Settlement: time.Date(2021, 4, 1, 0, 0, 0, 0, time.UTC),
+					Maturity:   time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC),
+					Frequency:  1,
 				},
-				RedemptionValue: 100.0,
-				CouponRate:      1.25,
+				Redemption: 100.0,
+				Coupon:     1.25,
 			},
-			Quote:       109.70,
-			ExpectedIRR: -0.574,
-			ExpectedZsp: 0.0,
+			Quote:          109.70,
+			ExpectedIRR:    -0.574,
+			ExpectedSpread: 0.0,
 		},
 		{
 			// ISIN CH0193265995 (quote per 2021-04-16)
-			B: &bonds.FixedCouponBond{
+			B: bonds.Bond{
 				Schedule: bonds.Maturities{
-					QuoteDate:    time.Date(2021, 4, 15, 0, 0, 0, 0, time.UTC),
-					MaturityDate: time.Date(2022, 9, 21, 0, 0, 0, 0, time.UTC),
-					Frequency:    1,
+					Settlement: time.Date(2021, 4, 15, 0, 0, 0, 0, time.UTC),
+					Maturity:   time.Date(2022, 9, 21, 0, 0, 0, 0, time.UTC),
+					Frequency:  1,
 				},
-				RedemptionValue: 100.0,
-				CouponRate:      1.00,
+				Redemption: 100.0,
+				Coupon:     1.00,
 			},
-			Quote:       102.22,
-			ExpectedIRR: -0.54,
-			ExpectedZsp: 25.00, // EUR-AA Rating for Financial Companies with Maturity 1Y 26.26 bps
+			Quote:          102.22,
+			ExpectedIRR:    -0.54,
+			ExpectedSpread: 25.00, // EUR-AA Rating for Financial Companies with Maturity 1Y 26.26 bps
 		},
 	}
 
@@ -78,15 +78,15 @@ func TestYields(t *testing.T) {
 		}
 
 		// Z-Spread
-		zspread, err := bonds.ZSpread(test.Quote, test.B, &term)
+		spread, err := bonds.Spread(test.Quote, test.B, &term)
 		// fmt.Println(zspread)
 		if err != nil {
 			fmt.Println(err)
 			t.Errorf("zspread failed for test nr %d", nr)
 		}
 
-		if math.Abs(zspread-test.ExpectedZsp) > 1.0 {
-			t.Errorf("wrong Z-Spread for test nr %d, got %f, expected %f", nr, zspread, test.ExpectedZsp)
+		if math.Abs(spread-test.ExpectedSpread) > 1.0 {
+			t.Errorf("wrong Z-Spread for test nr %d, got %f, expected %f", nr, spread, test.ExpectedSpread)
 		}
 	}
 }

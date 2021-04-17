@@ -5,9 +5,9 @@ import (
 )
 
 type Maturities struct {
-	QuoteDate    time.Time
-	MaturityDate time.Time
-	Frequency    int // interest payment frequency, default: 1x per year
+	Settlement time.Time
+	Maturity   time.Time
+	Frequency  int // interest payment frequency, default: 1x per year
 }
 
 //Frequency
@@ -26,8 +26,8 @@ func (m *Maturities) M() []float64 {
 	step := 12 / m.GetFrequency()
 
 	// walk back from maturity date to quote date
-	quote := m.QuoteDate
-	for current := m.MaturityDate; current.Sub(quote) > 0; current = current.AddDate(0, -step, 0) {
+	quote := m.Settlement
+	for current := m.Maturity; current.Sub(quote) > 0; current = current.AddDate(0, -step, 0) {
 		maturities = append(maturities, ActualDifferenceInYears(quote, current))
 	}
 
@@ -36,21 +36,21 @@ func (m *Maturities) M() []float64 {
 
 //RemainingYears
 func (m *Maturities) RemainingYears() float64 {
-	if m.MaturityDate.Before(m.QuoteDate) {
+	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
-	return ActualDifferenceInYears(m.QuoteDate, m.MaturityDate)
+	return ActualDifferenceInYears(m.Settlement, m.Maturity)
 }
 
 // Days since last coupon payment based on European 30/360 method
 // Source: https://sqlsunday.com/2014/08/17/30-360-day-count-convention/
 func (m *Maturities) DaysSinceLastCouponInYears() float64 {
-	if m.MaturityDate.Before(m.QuoteDate) {
+	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
 	step := 12 / m.GetFrequency()
-	d1 := m.MaturityDate
-	d2 := m.QuoteDate
+	d1 := m.Maturity
+	d2 := m.Settlement
 	for ; d1.Sub(d2) > 0; d1 = d1.AddDate(0, -step, 0) {
 	}
 

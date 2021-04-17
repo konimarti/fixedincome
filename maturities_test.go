@@ -62,9 +62,9 @@ func TestMaturities(t *testing.T) {
 
 	for nr, test := range testData {
 		m := bonds.Maturities{
-			QuoteDate:    test.Quote,
-			MaturityDate: test.Maturity,
-			Frequency:    test.Frequency,
+			Settlement: test.Quote,
+			Maturity:   test.Maturity,
+			Frequency:  test.Frequency,
 		}
 
 		maturities := m.M()
@@ -116,9 +116,9 @@ func TestMaturitiesDaysSinceLastPayment(t *testing.T) {
 
 	for nr, test := range testData {
 		m := bonds.Maturities{
-			QuoteDate:    test.Quote,
-			MaturityDate: test.Maturity,
-			Frequency:    test.Frequency,
+			Settlement: test.Quote,
+			Maturity:   test.Maturity,
+			Frequency:  test.Frequency,
 		}
 
 		tolerance := 0.001

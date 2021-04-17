@@ -17,12 +17,12 @@ func IRR(quotedprice float64, b Bond) (float64, error) {
 	return root, err
 }
 
-// FindZSpread calculates the implied zero-volatility spread for a given term structure
-func ZSpread(quotedprice float64, b Bond, ts TermStructure) (float64, error) {
+// Spread calculates the implied static (zero-volatility) spread for a given term structure
+func Spread(quotedprice float64, b Bond, ts TermStructure) (float64, error) {
 	precision := 6
 
-	f := func(zspread float64) float64 {
-		_, clean := b.Pricing(zspread, ts)
+	f := func(spread float64) float64 {
+		_, clean := b.Pricing(spread, ts)
 		return clean - quotedprice
 	}
 
