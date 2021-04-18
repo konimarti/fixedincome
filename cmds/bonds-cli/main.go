@@ -18,7 +18,7 @@ var (
 	frequency      = flag.Int("freq", 1, "number of coupon payments per year (default: 1x per year)")
 	price          = flag.Float64("price", 0.0, "quote of bond at valuation date (optional but required for z-spread or IRR calculation)")
 	spread         = flag.Float64("spread", 0.0, "Static (zero-volatility) spread in basepoints for valuing risky bonds (default: 0.0 bps)")
-	fileFlag       = flag.String("f", "term.json", "json file containing the parameters for the Nelson-Siegel-Svensson term stucture")
+	fileFlag       = flag.String("f", "term.json", "json file containing the parameters for the Nelson-Siegel-Svensson term structure")
 )
 
 func main() {

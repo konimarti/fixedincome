@@ -34,7 +34,7 @@ Valuation of fixed income securities with a spot-rate term structure based on th
 ```
 
 ```go
-	// price risk-free bond with spead of 0.0
+	// price risk-free bond with a spread of 0.0
 	dirty, clean := bond.Pricing(0.0, &term)
 
 	// calculate accrued interest (30/360 day convention)
@@ -49,26 +49,26 @@ Valuation of fixed income securities with a spot-rate term structure based on th
 
 ### Nelson-Siegel-Svensson parameters 
 
-Many central banks offer daily updates of the fitted parameters for the Nelson-Siegel-Svensson model of the government bonds:
+Many central banks offer daily updates of the fitted parameters for the Nelson-Siegel-Svensson model:
 
-* Swiss Natinonal Bank (SNB) for CHF [link](https://data.snb.ch/en/topics/ziredev#!/cube/rendopar)
+* Swiss National Bank (SNB) for [CHF risk-free spot rates](https://data.snb.ch/en/topics/ziredev#!/cube/rendopar)
 
-* European Central Bank (ECB) for EUR [link](https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_area_yield_curves/html/index.en.html)
+* European Central Bank (ECB) for [EUR risk-free spot rates](https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_area_yield_curves/html/index.en.html)
 
 ## Applications 
 
 ### bonds-cli
 
-* ```bonds-cli``` is a command-line tool to value bonds
+* ```bonds-cli``` is a command-line tool to value fixed income securities
 
   - Install the app: ```go install github.com/konimarti/bonds/cmds/bonds-cli```
 
-  - Run cli: 
+  - Run program with:
     ```
     $ bonds-cli -coupon 1.25 -maturity 2026-05-28 -price 109.64 -freq 2
     ```
 
-  - Output:
+  - This produces the following output:
     ```
     Settlement Date  : 2021-04-18
     Maturity Date    : 2026-05-28
@@ -92,11 +92,26 @@ Many central banks offer daily updates of the fitted parameters for the Nelson-S
       Z-Spread (bps)            -0.3
     ```
 
-## Futher reading
+* The following options are implemented in ```bonds-cli```:
+```
+Usage of bonds-cli:
+  -coupon float
+    	coupon in percent of par value (default: 0.0%)
+  -f string
+    	json file containing the parameters for the Nelson-Siegel-Svensson term stucture (default "term.json")
+  -freq int
+    	number of coupon payments per year (default: 1x per year) (default 1)
+  -maturity string
+    	maturity date of bond (default "2022-04-18")
+  -price float
+    	quote of bond at valuation date (optional but required for z-spread or IRR calculation)
+  -settlement string
+    	valuation date / settlement date (default "2021-04-18")
+  -spread float
+    	Static (zero-volatility) spread in basepoints for valuing risky bonds (default: 0.0 bps)
+```
+
+## Further reading
 
 * [Nelson-Siegel-Svensson model at SNB](https://www.snb.ch/de/mmr/reference/quartbul_2002_2_komplett/source/quartbul_2002_2_komplett.de.pdf) on page 64
-
-## Credits
-
-This software package has been developed for and is in production at [Caliza Holding](http://www.caliza.ch/en).
 
