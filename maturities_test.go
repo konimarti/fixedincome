@@ -85,8 +85,8 @@ func TestMaturities(t *testing.T) {
 			t.Errorf("Wrong remaining years for test nr %d, got: %f, expected: %f", nr, m.YearsToMaturity(), test.ExpectedRemaining)
 		}
 
-		if m.GetFrequency() != test.ExpectedFrequency {
-			t.Errorf("GetFrequency failed for test nr %d, got: %d, expected: %d", nr, m.GetFrequency(), test.ExpectedFrequency)
+		if m.Compounding() != test.ExpectedFrequency {
+			t.Errorf("GetFrequency failed for test nr %d, got: %d, expected: %d", nr, m.Compounding(), test.ExpectedFrequency)
 		}
 
 	}

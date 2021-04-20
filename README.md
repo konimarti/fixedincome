@@ -29,31 +29,34 @@ Valuation of fixed income securities with a spot-rate term structure based on th
 
   - Run the application and provide the details of the bond to be valued:
     ```
-    $ bonds-cli -coupon 1.25 -maturity 2026-05-28 -price 109.64 -freq 2
+    $ bonds-cli -coupon 1.25 -settlement 2021-04-17 -maturity 2026-05-28 -quote 109.64 -n 2
     ```
 
   - This produces the following output:
     ```
-    Settlement Date  : 2021-04-18
-    Maturity Date    : 2026-05-28
+	Settlement Date  : 2021-04-17
+	Maturity Date    : 2026-05-28
 
-    Remaining years  : 5.11 years
+	Years to Maturity: 5.12 years
+	Modified duration: 4.96
 
-    Coupon           : 1.25
-    Frequency        : 2
-    Day Convention   : 30/360
-    Maturities       : Act/365 fixed
+	Coupon           : 1.25
+	Frequency        : 2
+	Day Convention   : 30/360
+	Maturities       : Act/365 fixed
 
-        Dirty Price           110.11
-    [-] Accrued Interest        0.49
-    --------------------------------
-    [=] Clean Price           109.62
-    ================================
+	Spread           : 0.00
 
-    Yields for the quoted price:
-      Price                   109.64
-      Yield-to-Maturity        -0.60
-      Z-Spread (bps)            -0.3
+	    Dirty Price           110.11
+	[-] Accrued Interest        0.48
+	--------------------------------
+	[=] Clean Price           109.63
+	================================
+
+	Yields for the quoted price:
+	  Quote                   109.64
+	  Yield-to-Maturity        -0.60
+	  Implied spread (bps)            -0.2
     ```
 
 * The following options are implemented in ```bonds-cli```:
@@ -62,15 +65,17 @@ Usage of bonds-cli:
   -coupon float
     	coupon in percent of par value (default: 0.0%)
   -f string
-    	json file containing the parameters for the Nelson-Siegel-Svensson term stucture (default "term.json")
-  -freq int
-    	number of coupon payments per year (default: 1x per year) (default 1)
+    	json file containing the parameters for the Nelson-Siegel-Svensson term structure (default "term.json")
   -maturity string
-    	maturity date of bond (default "2022-04-18")
-  -price float
-    	quote of bond at valuation date (optional but required for z-spread or IRR calculation)
+    	maturity date of bond (default "2022-04-20")
+  -n int
+    	compounding frequency per year (default: 1x per year) (default 1)
+  -quote float
+    	quote of bond (optional but required for static spread or internal rate of return calculation)
+  -redemption float
+    	redemption value of bond at maturity (default: 100) (default 100)
   -settlement string
-    	valuation date / settlement date (default "2021-04-18")
+    	valuation date / settlement date (default "2021-04-20")
   -spread float
     	Static (zero-volatility) spread in basepoints for valuing risky bonds (default: 0.0 bps)
 ```
@@ -113,14 +118,17 @@ Many central banks offer daily updates of the fitted parameters for the Nelson-S
 	// price risk-free bond with a spread of 0.0
 	dirty, clean := bond.Pricing(0.0, &term)
 
-	// calculate accrued interest (30/360 day convention)
+	// modified duration 
+	duration := bond.Duration(0.0, &term)
+
+	// accrued interest (30/360 day convention)
 	accrued := bond.Accrued()
 
-	// estimate yield to maturity (IRR) given a market price
+	// internal rate of return given a market price
 	irr, _ := bonds.IRR(109.70, bond)
 
-	// estimate implied static (zero-volatility) spread (useful for risky bonds)
-	spread, _ := bond.Spread(109.70, bond, &term)
+	// implied static spread 
+	spread, _ := bonds.Spread(109.70, bond, &term)
 ```
 
 ## Further reading

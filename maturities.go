@@ -14,20 +14,20 @@ type Maturities struct {
 	Frequency int
 }
 
-//Frequency returns the annual compounding frequency
-func (m *Maturities) GetFrequency() int {
-	freq := 1
+//Compounding returns the annual compounding frequency
+func (m *Maturities) Compounding() int {
+	n := 1
 	if m.Frequency > 0 {
-		freq = m.Frequency
+		n = m.Frequency
 	}
-	return freq
+	return n
 }
 
 //M returns a slice of the effective maturities in years of the bond's cash flows
 func (m *Maturities) M() []float64 {
 	maturities := []float64{}
 
-	step := 12 / m.GetFrequency()
+	step := 12 / m.Compounding()
 
 	// walk back from maturity date to quote date
 	quote := m.Settlement
@@ -52,7 +52,7 @@ func (m *Maturities) DaysSinceLastCouponInYears() float64 {
 	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
-	step := 12 / m.GetFrequency()
+	step := 12 / m.Compounding()
 	d1 := m.Maturity
 	d2 := m.Settlement
 	for ; d1.Sub(d2) > 0; d1 = d1.AddDate(0, -step, 0) {

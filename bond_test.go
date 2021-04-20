@@ -86,3 +86,49 @@ func TestAccruedInterest(t *testing.T) {
 
 	}
 }
+
+func TestDuration(t *testing.T) {
+
+	testData := []struct {
+		Quote     time.Time
+		Maturity  time.Time
+		Coupon    float64
+		Frequency int
+		Expected  float64
+	}{
+		{
+			Quote:     time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
+			Maturity:  time.Date(2031, 1, 1, 0, 0, 0, 0, time.UTC),
+			Coupon:    0.0,
+			Frequency: 1,
+			Expected:  10.0,
+		},
+	}
+
+	term := bonds.NelsonSiegelSvensson{
+		-0.266372,
+		-0.471343,
+		5.68789,
+		-5.12324,
+		5.74881,
+		4.14426,
+	}
+
+	for nr, test := range testData {
+
+		bond := bonds.Bond{
+			Schedule: bonds.Maturities{
+				Settlement: test.Quote,
+				Maturity:   test.Maturity,
+				Frequency:  test.Frequency,
+			},
+			Redemption: 100.0,
+			Coupon:     test.Coupon,
+		}
+
+		duration := bond.Duration(0.0, &term)
+		if math.Abs(duration-test.Expected) > 0.01 {
+			t.Errorf("test nr %d, got %f, expected %f", nr, duration, test.Expected)
+		}
+	}
+}
