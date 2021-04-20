@@ -25,12 +25,12 @@ func (b *Bond) Pricing(spread float64, ts TermStructure) (float64, float64) {
 	}
 
 	// discount redemption value
-	dcf += b.Redemption * ts.D(b.RemainingYears(), spread, freq)
+	dcf += b.Redemption * ts.D(b.YearsToMaturity(), spread, freq)
 
 	return dcf, dcf - b.Accrued()
 }
 
-// RemainingYears
-func (b *Bond) RemainingYears() float64 {
-	return b.Schedule.RemainingYears()
+// YearsToMaturity calculates the number of years until maturity
+func (b *Bond) YearsToMaturity() float64 {
+	return b.Schedule.YearsToMaturity()
 }

@@ -16,7 +16,8 @@ var (
 	maturityFlag   = flag.String("maturity", time.Now().AddDate(1, 0, 0).Format("2006-01-02"), "maturity date of bond")
 	coupon         = flag.Float64("coupon", 0.0, "coupon in percent of par value (default: 0.0%)")
 	frequency      = flag.Int("freq", 1, "number of coupon payments per year (default: 1x per year)")
-	price          = flag.Float64("price", 0.0, "quote of bond at valuation date (optional but required for z-spread or IRR calculation)")
+	price          = flag.Float64("price", 0.0, "quote of bond (optional but required for static spread or internal rate of return calculation)")
+	redemption     = flag.Float64("redemption", 100.0, "quote of bond (optional but required for static spread or internal rate of return calculation)")
 	spread         = flag.Float64("spread", 0.0, "Static (zero-volatility) spread in basepoints for valuing risky bonds (default: 0.0 bps)")
 	fileFlag       = flag.String("f", "term.json", "json file containing the parameters for the Nelson-Siegel-Svensson term structure")
 )
@@ -62,7 +63,7 @@ func main() {
 			Frequency:  *frequency,
 		},
 		Coupon:     *coupon,
-		Redemption: 100.0,
+		Redemption: *redemption,
 	}
 
 	// price the bond
@@ -72,7 +73,7 @@ func main() {
 	fmt.Printf("Settlement Date  : %s\n", quote.Format("2006-01-02"))
 	fmt.Printf("Maturity Date    : %s\n", maturity.Format("2006-01-02"))
 	fmt.Println("")
-	fmt.Printf("Remaining years  : %.2f years\n", bond.RemainingYears())
+	fmt.Printf("Years to Maturity: %.2f years\n", bond.YearsToMaturity())
 	fmt.Println("")
 	fmt.Printf("Coupon           : %.2f\n", *coupon)
 	fmt.Printf("Frequency        : %d\n", *frequency)

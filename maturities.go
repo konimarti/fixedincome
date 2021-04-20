@@ -4,13 +4,17 @@ import (
 	"time"
 )
 
+// Maturities contain the information about the term maturities of the bond's cash flows
 type Maturities struct {
+	// Settlement represent the date of valuation (or settlement)
 	Settlement time.Time
-	Maturity   time.Time
-	Frequency  int // interest payment frequency, default: 1x per year
+	// Maturity represents the maturity date
+	Maturity time.Time
+	// Frequency is the compounding frequency per year (default: 1x per year)
+	Frequency int
 }
 
-//Frequency
+//Frequency returns the annual compounding frequency
 func (m *Maturities) GetFrequency() int {
 	freq := 1
 	if m.Frequency > 0 {
@@ -19,7 +23,7 @@ func (m *Maturities) GetFrequency() int {
 	return freq
 }
 
-//Maturities returns a slice of the effective maturities in years of the bond's cash flows
+//M returns a slice of the effective maturities in years of the bond's cash flows
 func (m *Maturities) M() []float64 {
 	maturities := []float64{}
 
@@ -34,8 +38,8 @@ func (m *Maturities) M() []float64 {
 	return maturities
 }
 
-//RemainingYears
-func (m *Maturities) RemainingYears() float64 {
+//YearsToMaturity calculates the time in years to redemption
+func (m *Maturities) YearsToMaturity() float64 {
 	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
@@ -83,7 +87,7 @@ func (m *Maturities) DaysSinceLastCouponInYears() float64 {
 
 // helper functions
 
-// Actual difference between two dates in years
+// Difference between two dates in years based on a fixed year with 365 days
 func ActualDifferenceInYears(start, stop time.Time) float64 {
 	return float64(stop.Sub(start).Hours()) / 24.0 / 365.0
 }

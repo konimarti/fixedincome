@@ -81,8 +81,8 @@ func TestMaturities(t *testing.T) {
 			}
 		}
 
-		if math.Abs(m.RemainingYears()-test.ExpectedRemaining) > tolerance {
-			t.Errorf("Wrong remaining years for test nr %d, got: %f, expected: %f", nr, m.RemainingYears(), test.ExpectedRemaining)
+		if math.Abs(m.YearsToMaturity()-test.ExpectedRemaining) > tolerance {
+			t.Errorf("Wrong remaining years for test nr %d, got: %f, expected: %f", nr, m.YearsToMaturity(), test.ExpectedRemaining)
 		}
 
 		if m.GetFrequency() != test.ExpectedFrequency {
