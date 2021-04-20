@@ -21,11 +21,11 @@ func (b *Bond) Pricing(spread float64, ts TermStructure) (float64, float64) {
 
 	// discount coupon payments
 	for _, m := range maturities {
-		dcf += b.Coupon / float64(freq) * ts.D(m, spread, freq)
+		dcf += b.Coupon / float64(freq) * ts.Z(m, spread, freq)
 	}
 
 	// discount redemption value
-	dcf += b.Redemption * ts.D(b.YearsToMaturity(), spread, freq)
+	dcf += b.Redemption * ts.Z(b.YearsToMaturity(), spread, freq)
 
 	return dcf, dcf - b.Accrued()
 }

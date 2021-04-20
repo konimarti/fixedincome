@@ -18,7 +18,7 @@ func TestConstantRate(t *testing.T) {
 		if c.Rate(float64(i)) != rate {
 			t.Errorf("rates don't match for maturity %d", i)
 		}
-		dcf += coupon * c.D(float64(i), 0.0, 1)
+		dcf += coupon * c.Z(float64(i), 0.0, 1)
 		coupon = coupon * (1 + rate/100.0)
 	}
 

@@ -13,41 +13,40 @@ type NelsonSiegelSvensson struct {
 	T2 float64 `json:"t2"`
 }
 
-// RateContinuous returns the continuous compounded spot rate for maturity m in years in percent
-func (n *NelsonSiegelSvensson) RateContinuous(m float64) float64 {
-	rate_cc := n.B0
-	rate_cc += n.B1 * ((1.0 - math.Exp(-m/n.T1)) * n.T1 / m)
-	rate_cc += n.B2 * (((1.0 - math.Exp(-m/n.T1)) * n.T1 / m) - math.Exp(-m/n.T1))
-	rate_cc += n.B3 * (((1.0 - math.Exp(-m/n.T2)) * n.T2 / m) - math.Exp(-m/n.T2))
-	// rate_cc += n.B1 * ((1.0 - math.Exp(-m/n.T1)) / (m / n.T1))
-	// rate_cc += n.B2 * (((1.0 - math.Exp(-m/n.T1)) / (m / n.T1)) - math.Exp(-m/n.T1))
-	// rate_cc += n.B3 * (((1.0 - math.Exp(-m/n.T2)) / (m / n.T2)) - math.Exp(-m/n.T2))
+// r returns the continuous compounded spot rate in percent for a maturity of m years
+func (nss *NelsonSiegelSvensson) r(m float64) float64 {
+	rate_cc := nss.B0
+	rate_cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m)
+	rate_cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m) - math.Exp(-m/nss.T1))
+	rate_cc += nss.B3 * (((1.0 - math.Exp(-m/nss.T2)) * nss.T2 / m) - math.Exp(-m/nss.T2))
+	// rate_cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) / (m / nss.T1))
+	// rate_cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) / (m / nss.T1)) - math.Exp(-m/nss.T1))
+	// rate_cc += nss.B3 * (((1.0 - math.Exp(-m/nss.T2)) / (m / nss.T2)) - math.Exp(-m/nss.T2))
 	return rate_cc
 }
 
-// Rate returns the annually compounded spot rate for maturity m in years in percent
-func (n *NelsonSiegelSvensson) Rate(m float64) float64 {
-	return (math.Exp(n.RateContinuous(m)/100.0) - 1.0) * 100.0
+// z return the discount factor for a maturity of m years
+func (nss *NelsonSiegelSvensson) z(m float64) float64 {
+	return math.Exp(-nss.r(m) * 0.01 * m)
 }
 
-// DContinuous return the discount factor to discount the cash flows for the given maturity m in years
-func (n *NelsonSiegelSvensson) DContinuous(m float64) float64 {
-	return math.Exp(-n.RateContinuous(m) / 100.0 * m)
+// Rate returns the annually compounded spot rate in percents for a maturity of m years
+func (nss *NelsonSiegelSvensson) Rate(m float64) float64 {
+	return (math.Exp(nss.r(m)*0.01) - 1.0) * 100.0
 }
 
-// D return the discount factor to discount the cash flows for the given maturity m in years, zspread is the zero volatility spread in bps
-func (n *NelsonSiegelSvensson) D(m float64, zspread float64, interestfrequency int) float64 {
-	frequency := 1.0
-	if interestfrequency > 0 {
-		frequency = float64(interestfrequency)
+// Z return the discount factor to discount the cash flows for a maturity of m years.
+// Spread is the static (zero-volatility) annual spread in bps
+// coumpounding is the compounding frequency (if 0, set to 1 by default)
+func (nss *NelsonSiegelSvensson) Z(m float64, spread float64, compounding int) float64 {
+	n := 1.0
+	if compounding > 0 {
+		n = float64(compounding)
 	}
-	return math.Pow(1.0+(n.Rate(m)/100.0+zspread/1e4)/frequency, -m*frequency)
+	return math.Pow(1.0+(nss.Rate(m)*0.01+spread*0.0001)/n, -m*n)
 }
 
-// Forward rate
-func (n *NelsonSiegelSvensson) Forward(m, t float64) float64 {
-	rateM := n.Rate(m)
-	rateMt := n.Rate(m + t)
-	forward := math.Pow(math.Pow(1.0+rateMt, m+t)/math.Pow(1.0+rateM, m), 1.0/t)
-	return forward
-}
+// F is the forward discount factor at time T1=m years
+// func (n *NelsonSiegelSvensson) F(m, t float64) float64 {
+// 	return z(m+t) / z(m)
+// }
