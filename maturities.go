@@ -87,9 +87,9 @@ func (m *Maturities) DaysSinceLastCouponInYears() float64 {
 
 // helper functions
 
-// Difference between two dates in years based on a fixed year with 365 days
+// Difference between two dates in years (Act/Act)
 func ActualDifferenceInYears(start, stop time.Time) float64 {
-	return float64(stop.Sub(start).Hours()) / 24.0 / 365.0
+	return float64(stop.Sub(start).Hours()) / 24.0 / 365.25
 }
 
 // Actual difference between two dates in years
