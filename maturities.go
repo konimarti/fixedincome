@@ -2,6 +2,8 @@ package bonds
 
 import (
 	"time"
+
+	"github.com/konimarti/daycount"
 )
 
 // Maturities contain the information about the term maturities of the bond's cash flows
@@ -12,6 +14,8 @@ type Maturities struct {
 	Maturity time.Time
 	// Frequency is the compounding frequency per year (default: 1x per year)
 	Frequency int
+	// Basis represents the day count convention (default: "" for 30E/360 ISDA)
+	Basis string
 }
 
 //Compounding returns the annual compounding frequency
@@ -46,43 +50,25 @@ func (m *Maturities) YearsToMaturity() float64 {
 	return ActualDifferenceInYears(m.Settlement, m.Maturity)
 }
 
-// Days since last coupon payment based on European 30/360 method
-// Source: https://sqlsunday.com/2014/08/17/30-360-day-count-convention/
-func (m *Maturities) DaysSinceLastCouponInYears() float64 {
+// DayCountFraction returns year fraction since last coupon
+func (m *Maturities) DayCountFraction() float64 {
 	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
 	step := 12 / m.Compounding()
 	d1 := m.Maturity
 	d2 := m.Settlement
+	d3 := time.Time{}
+
+	// iterate maturity date backwards until last coupon date before settlement date
 	for ; d1.Sub(d2) > 0; d1 = d1.AddDate(0, -step, 0) {
+		d3 = d1
 	}
 
-	// correct the dates according to European 30/360
-	if d1.Day() == 31 {
-		d1 = d1.AddDate(0, 0, -1)
-	}
-	if d2.Day() == 31 {
-		d2 = d2.AddDate(0, 0, -1)
-	}
+	// calculate day count fraction
+	frac := daycount.Fraction(d1, d2, d3, m.Compounding(), m.Basis)
 
-	// comply with ISDA guideline for February
-	d1Day := float64(d1.Day())
-	if d1.Month() == 2 && d1Day > 27.0 {
-		d1Day = 30.0
-	}
-	d2Day := float64(d2.Day())
-	if d2.Month() == 2 && d2Day > 27.0 {
-		d2Day = 30.0
-	}
-
-	days := 360.0*float64(d2.Year()-d1.Year()) + 30.0*float64(d2.Month()-d1.Month()) + d2Day - d1Day
-
-	// fmt.Println("d1=", current)
-	// fmt.Println("d2=", quote)
-	// fmt.Println("days=", days)
-
-	return days / 360.0
+	return frac
 }
 
 // helper functions

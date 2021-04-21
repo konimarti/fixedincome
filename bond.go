@@ -9,7 +9,7 @@ type Bond struct {
 
 // Accrued calculated the accrued interest
 func (b *Bond) Accrued() float64 {
-	return b.Coupon * b.Schedule.DaysSinceLastCouponInYears()
+	return b.Coupon * b.Schedule.DayCountFraction()
 }
 
 // Pricing returns the "dirty" and the "clean" prices (adjusted for accrued interest)

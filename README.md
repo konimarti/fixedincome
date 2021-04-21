@@ -29,7 +29,7 @@ Valuation of fixed income securities with a spot-rate term structure based on th
 
   - Run the application and provide the details of the bond to be valued:
     ```
-    $ bonds-cli -coupon 1.25 -settlement 2021-04-17 -maturity 2026-05-28 -quote 109.64 -n 2
+    $ bonds-cli -coupon 1.25 -n 2 -settlement 2021-04-17 -maturity 2026-05-28 -quote 109.64 
     ```
 
   - This produces the following output:
@@ -37,13 +37,12 @@ Valuation of fixed income securities with a spot-rate term structure based on th
 	Settlement Date  : 2021-04-17
 	Maturity Date    : 2026-05-28
 
-	Years to Maturity: 5.12 years
-	Modified duration: 4.96
+	Years to Maturity: 5.11 years
+	Modified duration: 4.95
 
 	Coupon           : 1.25
 	Frequency        : 2
-	Day Convention   : 30/360
-	Maturities       : Act/365 fixed
+	Day Convention   : 30E360
 
 	Spread           : 0.00
 
@@ -54,30 +53,32 @@ Valuation of fixed income securities with a spot-rate term structure based on th
 	================================
 
 	Yields for the quoted price:
-	  Quote                   109.64
-	  Yield-to-Maturity        -0.60
-	  Implied spread (bps)            -0.2
+	  Price                   109.64
+	  Yield-to-Maturity        -0.60 %
+	  Implied spread            -0.2 bps
     ```
 
 * The following options are implemented in ```bonds-cli```:
 ```
 Usage of bonds-cli:
   -coupon float
-    	coupon in percent of par value (default: 0.0%)
+    	coupon in percent of par value
+  -daycount string
+    	day count convention for accured interest, available: BONDBASIS, ACTACT, 30E360, EUROBOND (default "30E360")
   -f string
     	json file containing the parameters for the Nelson-Siegel-Svensson term structure (default "term.json")
   -maturity string
-    	maturity date of bond (default "2022-04-20")
+    	maturity date of bond (default "2022-04-21")
   -n int
-    	compounding frequency per year (default: 1x per year) (default 1)
+    	compounding frequency per year (default 1)
   -quote float
-    	quote of bond (optional but required for static spread or internal rate of return calculation)
+    	quoted bond price at settlement date
   -redemption float
-    	redemption value of bond at maturity (default: 100) (default 100)
+    	redemption value of bond at maturity (default 100)
   -settlement string
-    	valuation date / settlement date (default "2021-04-20")
+    	valuation date / settlement date (default "2021-04-21")
   -spread float
-    	Static (zero-volatility) spread in basepoints for valuing risky bonds (default: 0.0 bps)
+    	Static (zero-volatility) spread in basepoints for valuing risky bonds
 ```
 
 ## Nelson-Siegel-Svensson parameters 

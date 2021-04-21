@@ -92,7 +92,7 @@ func TestMaturities(t *testing.T) {
 	}
 }
 
-func TestMaturitiesDaysSinceLastPayment(t *testing.T) {
+func TestMaturitiesDayCountFraction(t *testing.T) {
 
 	testData := []struct {
 		Quote     time.Time
@@ -121,9 +121,9 @@ func TestMaturitiesDaysSinceLastPayment(t *testing.T) {
 			Frequency:  test.Frequency,
 		}
 
-		tolerance := 0.001
+		tolerance := 0.0001
 
-		value := m.DaysSinceLastCouponInYears()
+		value := m.DayCountFraction()
 
 		if math.Abs(value-test.Expected) > tolerance {
 			t.Errorf("days do not match for test nr %d, got: %f, expected: %f", nr, value, test.Expected)
