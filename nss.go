@@ -2,7 +2,7 @@ package bonds
 
 import "math"
 
-// Nelson-Siegel-Svensson implementation for spot rates
+// NelsonSiegelSvensson represents a spot-rate term structure
 // Source: https://data.snb.ch/en/topics/ziredev#!/doc/explanations_ziredev#interest_rates_meth_par_siegel
 type NelsonSiegelSvensson struct {
 	B0 float64 `json:"b0"`
@@ -15,14 +15,14 @@ type NelsonSiegelSvensson struct {
 
 // r returns the continuous compounded spot rate in percent for a maturity of m years
 func (nss *NelsonSiegelSvensson) r(m float64) float64 {
-	rate_cc := nss.B0
-	rate_cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m)
-	rate_cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m) - math.Exp(-m/nss.T1))
-	rate_cc += nss.B3 * (((1.0 - math.Exp(-m/nss.T2)) * nss.T2 / m) - math.Exp(-m/nss.T2))
-	// rate_cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) / (m / nss.T1))
-	// rate_cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) / (m / nss.T1)) - math.Exp(-m/nss.T1))
-	// rate_cc += nss.B3 * (((1.0 - math.Exp(-m/nss.T2)) / (m / nss.T2)) - math.Exp(-m/nss.T2))
-	return rate_cc
+	cc := nss.B0
+	cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m)
+	cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m) - math.Exp(-m/nss.T1))
+	cc += nss.B3 * (((1.0 - math.Exp(-m/nss.T2)) * nss.T2 / m) - math.Exp(-m/nss.T2))
+	// cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) / (m / nss.T1))
+	// cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) / (m / nss.T1)) - math.Exp(-m/nss.T1))
+	// cc += nss.B3 * (((1.0 - math.Exp(-m/nss.T2)) / (m / nss.T2)) - math.Exp(-m/nss.T2))
+	return cc
 }
 
 // z return the discount factor for a maturity of m years

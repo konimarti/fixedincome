@@ -36,7 +36,7 @@ func (m *Maturities) M() []float64 {
 	// walk back from maturity date to quote date
 	quote := m.Settlement
 	for current := m.Maturity; current.Sub(quote) > 0; current = current.AddDate(0, -step, 0) {
-		maturities = append(maturities, ActualDifferenceInYears(quote, current))
+		maturities = append(maturities, actualDifferenceInYears(quote, current))
 	}
 
 	return maturities
@@ -47,7 +47,7 @@ func (m *Maturities) YearsToMaturity() float64 {
 	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
-	return ActualDifferenceInYears(m.Settlement, m.Maturity)
+	return actualDifferenceInYears(m.Settlement, m.Maturity)
 }
 
 // DayCountFraction returns year fraction since last coupon
@@ -73,8 +73,8 @@ func (m *Maturities) DayCountFraction() float64 {
 
 // helper functions
 
-// Difference between two dates in years (Act/Act)
-func ActualDifferenceInYears(start, stop time.Time) float64 {
+// actualDifferenceinYears returns the difference between two dates in years (Act/Act)
+func actualDifferenceInYears(start, stop time.Time) float64 {
 	return float64(stop.Sub(start).Hours()) / 24.0 / 365.25
 }
 
