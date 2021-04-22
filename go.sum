@@ -2,3 +2,5 @@ github.com/khezen/rootfinding v1.0.1 h1:zg+l7e6INBuDM0ggYVUdFXSZP7FazV1Y51avoTFh
 github.com/khezen/rootfinding v1.0.1/go.mod h1:4QfAq3+EOK7ppR/62app1p6CG9h8niDYX0ttcClnCOU=
 github.com/konimarti/daycount v0.0.0-20210421202638-af7b1ef7aeb5 h1:TLA01yIhiToUNp8QtHO4HWs/JOXrMZLzADw3g/Cmch0=
 github.com/konimarti/daycount v0.0.0-20210421202638-af7b1ef7aeb5/go.mod h1:nC25jrhS2dFCelOXroMoev4IE8m47A+RIrsURSgvuUw=
+github.com/konimarti/daycount v0.0.1 h1:ADhVjdU+JpDqMkKQ/qGzGYwCs5nbFjM5VvHVDmLaLXI=
+github.com/konimarti/daycount v0.0.1/go.mod h1:nC25jrhS2dFCelOXroMoev4IE8m47A+RIrsURSgvuUw=
