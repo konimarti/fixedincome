@@ -36,33 +36,26 @@ Valuation of fixed income securities with a spot-rate term structure based on th
   - This produces the following output:
     ```
     Settlement Date  : 2021-04-17
-    Maturity Date    : 2026-05-28
+    Maturity Date    : 2026-05-28    
+    Years to Maturity: 5.11 years
+    Modified duration: 4.95
+    
+    Coupon : 1.25
+    Frequency : 2
+    Day Convention : 30E360
+    
+    Spread : 0.00
+    
+    Dirty Price           	110.11
+    [-] Accrued Interest 	0.48
+    [=] Clean Price 		109.63
+    
+    Yields for the quoted price:
+    	Price 109.64
+	Yield-to-Maturity -0.60 %
+	Implied spread -0.2 bps
     ```
-
-  Years to Maturity: 5.11 years
-  Modified duration: 4.95
-
-  Coupon : 1.25
-  Frequency : 2
-  Day Convention : 30E360
-
-  Spread : 0.00
-
-      Dirty Price           110.11
-
-  ## [-] Accrued Interest 0.48
-
-  # [=] Clean Price 109.63
-
-  Yields for the quoted price:
-  Price 109.64
-  Yield-to-Maturity -0.60 %
-  Implied spread -0.2 bps
-
-  ```
-
-  ```
-
+   
 - The following options are implemented in `bonds-cli`:
 
 ```
