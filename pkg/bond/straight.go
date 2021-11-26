@@ -17,8 +17,8 @@ func (b *Straight) Accrued() float64 {
 	return b.Coupon * b.Schedule.DayCountFraction()
 }
 
-// Pricing returns the "dirty" and the "clean" prices (adjusted for accrued interest)
-func (b *Straight) Pricing(spread float64, ts term.Structure) (float64, float64) {
+// PresentValue returns the "clean" bond prices (for the "dirty" price just add the accrued interest)
+func (b *Straight) PresentValue(spread float64, ts term.Structure) float64 {
 	dcf := 0.0
 
 	maturities := b.Schedule.M()
@@ -32,7 +32,7 @@ func (b *Straight) Pricing(spread float64, ts term.Structure) (float64, float64)
 	// discount redemption value
 	dcf += b.Redemption * ts.Z(b.YearsToMaturity(), spread, n)
 
-	return dcf, dcf - b.Accrued()
+	return dcf - b.Accrued()
 }
 
 // YearsToMaturity calculates the number of years until maturity
@@ -46,7 +46,7 @@ func (b *Straight) Duration(spread float64, ts term.Structure) float64 {
 
 	maturities := b.Schedule.M()
 	n := b.Schedule.Compounding()
-	p, _ := b.Pricing(spread, ts)
+	p := b.PresentValue(spread, ts)
 	if p == 0.0 {
 		return 0.0
 	}

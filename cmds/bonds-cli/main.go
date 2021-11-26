@@ -75,7 +75,8 @@ func main() {
 	}
 
 	// price the bond
-	dirty, clean := bond.Pricing(*spread, &nss)
+	clean := bond.PresentValue(*spread, &nss)
+	dirty := clean + bond.Accrued()
 
 	fmt.Println("")
 	fmt.Printf("Settlement Date  : %s\n", quoteDate.Format("2006-01-02"))

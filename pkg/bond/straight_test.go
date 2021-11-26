@@ -34,9 +34,9 @@ func TestBondsPricing(t *testing.T) {
 		4.14426,
 	}
 
-	_, clean := bond.Pricing(0.0, &term)
+	clean := bond.PresentValue(0.0, &term)
 
-	// fmt.Println("dirty bond price=", dirty)
+	// fmt.Println("dirty bond price=", clean+bond.Accrued()
 	// fmt.Println("accrued interest=", bond.Accrued())
 	// fmt.Println("clean bond price=", clean)
 	// fmt.Println("quoted price    = 109.70")
