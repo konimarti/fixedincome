@@ -10,7 +10,7 @@ func IRR(quotedprice float64, s Security) (float64, error) {
 	precision := 6
 
 	f := func(irr float64) float64 {
-		return s.PresentValue(0.0, &term.ConstantRate{irr}) - quotedprice
+		return s.PresentValue(&term.ConstantRate{irr, 0.0}) - quotedprice
 	}
 
 	root, err := rootfinding.Brent(f, -20.0, 20.0, precision)
@@ -22,7 +22,8 @@ func Spread(quotedprice float64, s Security, ts term.Structure) (float64, error)
 	precision := 6
 
 	f := func(spread float64) float64 {
-		return s.PresentValue(spread, ts) - quotedprice
+		value := s.PresentValue(ts.SetSpread(spread))
+		return value - quotedprice
 	}
 
 	root, err := rootfinding.Brent(f, -10.0, 10000.0, precision)

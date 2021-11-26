@@ -16,6 +16,7 @@ func TestNelsonSiegelSvensson(t *testing.T) {
 		-5.12324,
 		5.74881,
 		4.14426,
+		0.0, // spread
 	}
 
 	// data for 2020-03 from https://data.snb.ch/en/topics/ziredev#!/cube/rendoblim

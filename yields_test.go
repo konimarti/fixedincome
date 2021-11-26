@@ -61,6 +61,7 @@ func TestYields(t *testing.T) {
 		-5.12324,
 		5.74881,
 		4.14426,
+		0.0, // spread
 	}
 
 	// loop over tests

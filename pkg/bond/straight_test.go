@@ -32,9 +32,10 @@ func TestBondsPricing(t *testing.T) {
 		-5.12324,
 		5.74881,
 		4.14426,
+		0.0, // spread
 	}
 
-	clean := bond.PresentValue(0.0, &term)
+	clean := bond.PresentValue(&term)
 
 	// fmt.Println("dirty bond price=", clean+bond.Accrued()
 	// fmt.Println("accrued interest=", bond.Accrued())
@@ -114,6 +115,7 @@ func TestDuration(t *testing.T) {
 		-5.12324,
 		5.74881,
 		4.14426,
+		0.0, // spread
 	}
 
 	for nr, test := range testData {
@@ -128,7 +130,7 @@ func TestDuration(t *testing.T) {
 			Coupon:     test.Coupon,
 		}
 
-		duration := bond.Duration(0.0, &term)
+		duration := bond.Duration(&term)
 		if math.Abs(duration-test.Expected) > 0.01 {
 			t.Errorf("test nr %d, got %f, expected %f", nr, duration, test.Expected)
 		}

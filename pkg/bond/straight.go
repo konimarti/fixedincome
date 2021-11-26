@@ -18,7 +18,7 @@ func (b *Straight) Accrued() float64 {
 }
 
 // PresentValue returns the "clean" bond prices (for the "dirty" price just add the accrued interest)
-func (b *Straight) PresentValue(spread float64, ts term.Structure) float64 {
+func (b *Straight) PresentValue(ts term.Structure) float64 {
 	dcf := 0.0
 
 	maturities := b.Schedule.M()
@@ -26,11 +26,11 @@ func (b *Straight) PresentValue(spread float64, ts term.Structure) float64 {
 
 	// discount coupon payments
 	for _, m := range maturities {
-		dcf += b.Coupon / float64(n) * ts.Z(m, spread, n)
+		dcf += b.Coupon / float64(n) * ts.Z(m, n)
 	}
 
 	// discount redemption value
-	dcf += b.Redemption * ts.Z(b.YearsToMaturity(), spread, n)
+	dcf += b.Redemption * ts.Z(b.YearsToMaturity(), n)
 
 	return dcf - b.Accrued()
 }
@@ -41,24 +41,24 @@ func (b *Straight) YearsToMaturity() float64 {
 }
 
 // Duration calculates the modified duration of the bond
-func (b *Straight) Duration(spread float64, ts term.Structure) float64 {
+func (b *Straight) Duration(ts term.Structure) float64 {
 	duration := 0.0
 
 	maturities := b.Schedule.M()
 	n := b.Schedule.Compounding()
-	p := b.PresentValue(spread, ts)
+	p := b.PresentValue(ts)
 	if p == 0.0 {
 		return 0.0
 	}
 
 	// discount coupon payments
 	for _, m := range maturities {
-		duration += m * b.Coupon / float64(n) * ts.Z(m, spread, n)
+		duration += m * b.Coupon / float64(n) * ts.Z(m, n)
 	}
 
 	// discount redemption value
 	years := b.YearsToMaturity()
-	duration += years * b.Redemption * ts.Z(years, spread, n)
+	duration += years * b.Redemption * ts.Z(years, n)
 
 	return duration / p
 }

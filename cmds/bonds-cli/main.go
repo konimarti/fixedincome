@@ -74,8 +74,11 @@ func main() {
 		Redemption: *redemption,
 	}
 
+	// set spread
+	nss.SetSpread(*spread)
+
 	// price the bond
-	clean := bond.PresentValue(*spread, &nss)
+	clean := bond.PresentValue(&nss)
 	dirty := clean + bond.Accrued()
 
 	fmt.Println("")
@@ -83,7 +86,7 @@ func main() {
 	fmt.Printf("Maturity Date    : %s\n", maturityDate.Format("2006-01-02"))
 	fmt.Println("")
 	fmt.Printf("Years to Maturity: %.2f years\n", bond.YearsToMaturity())
-	fmt.Printf("Modified duration: %.2f\n", bond.Duration(*spread, &nss))
+	fmt.Printf("Modified duration: %.2f\n", bond.Duration(&nss))
 	fmt.Println("")
 	fmt.Printf("Coupon           : %.2f\n", *coupon)
 	fmt.Printf("Frequency        : %d\n", *frequency)
