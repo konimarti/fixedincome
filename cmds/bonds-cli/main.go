@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/konimarti/bonds"
+	"github.com/konimarti/bonds/pkg/bond"
+	"github.com/konimarti/bonds/pkg/maturity"
+	"github.com/konimarti/bonds/pkg/term"
 	"github.com/konimarti/daycount"
 )
 
@@ -35,12 +38,12 @@ func main() {
 		log.Println(err)
 	}
 
-	var nss bonds.NelsonSiegelSvensson
+	var nss term.NelsonSiegelSvensson
 	err = json.Unmarshal(nssData, &nss)
 	if err != nil {
 		log.Println(err)
 		log.Println("no file given for term structure parameters. Use template for Nelson-Siegel-Svensson:")
-		data, err := json.MarshalIndent(bonds.NelsonSiegelSvensson{}, " ", "")
+		data, err := json.MarshalIndent(term.NelsonSiegelSvensson{}, " ", "")
 		if err != nil {
 			panic(err)
 		}
@@ -50,20 +53,20 @@ func main() {
 	}
 
 	// parse quote and maturity dates
-	quote, err := time.Parse("2006-01-02", *settlementFlag)
+	quoteDate, err := time.Parse("2006-01-02", *settlementFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
-	maturity, err := time.Parse("2006-01-02", *maturityFlag)
+	maturityDate, err := time.Parse("2006-01-02", *maturityFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// create fixed-coupon bond
-	bond := bonds.Bond{
-		Schedule: bonds.Maturities{
-			Settlement: quote,
-			Maturity:   maturity,
+	bond := bond.Straight{
+		Schedule: maturity.T{
+			Settlement: quoteDate,
+			Maturity:   maturityDate,
 			Frequency:  *frequency,
 			Basis:      *daycountname,
 		},
@@ -75,8 +78,8 @@ func main() {
 	dirty, clean := bond.Pricing(*spread, &nss)
 
 	fmt.Println("")
-	fmt.Printf("Settlement Date  : %s\n", quote.Format("2006-01-02"))
-	fmt.Printf("Maturity Date    : %s\n", maturity.Format("2006-01-02"))
+	fmt.Printf("Settlement Date  : %s\n", quoteDate.Format("2006-01-02"))
+	fmt.Printf("Maturity Date    : %s\n", maturityDate.Format("2006-01-02"))
 	fmt.Println("")
 	fmt.Printf("Years to Maturity: %.2f years\n", bond.YearsToMaturity())
 	fmt.Printf("Modified duration: %.2f\n", bond.Duration(*spread, &nss))
@@ -104,13 +107,13 @@ func main() {
 	}
 
 	fmt.Printf("  Price               %10.2f\n", bondPrice)
-	irr, err := bonds.IRR(bondPrice, bond)
+	irr, err := bonds.IRR(bondPrice, &bond)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("  Yield-to-Maturity   %10.2f %%\n", irr)
 
-	spread, err := bonds.Spread(bondPrice, bond, &nss)
+	spread, err := bonds.Spread(bondPrice, &bond, &nss)
 	if err != nil {
 		log.Fatal(err)
 	}

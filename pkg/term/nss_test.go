@@ -1,15 +1,15 @@
-package bonds_test
+package term_test
 
 import (
 	"math"
 	"testing"
 
-	"github.com/konimarti/bonds"
+	"github.com/konimarti/bonds/pkg/term"
 )
 
 func TestNelsonSiegelSvensson(t *testing.T) {
 	// NSS parameters as of 2021-03-31 from https://data.snb.ch/en/topics/ziredev#!/cube/rendopar
-	n := bonds.NelsonSiegelSvensson{
+	n := term.NelsonSiegelSvensson{
 		-0.266372,
 		-0.471343,
 		5.68789,

@@ -1,16 +1,16 @@
-package bonds_test
+package term_test
 
 import (
 	"math"
 	"testing"
 
-	"github.com/konimarti/bonds"
+	"github.com/konimarti/bonds/pkg/term"
 )
 
 func TestConstantRate(t *testing.T) {
 	rate := 1.25
 
-	c := bonds.ConstantRate{rate}
+	c := term.ConstantRate{rate}
 
 	coupon := 1.0
 	dcf := 0.0

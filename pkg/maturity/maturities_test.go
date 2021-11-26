@@ -1,11 +1,11 @@
-package bonds_test
+package maturity_test
 
 import (
 	"math"
 	"testing"
 	"time"
 
-	"github.com/konimarti/bonds"
+	"github.com/konimarti/bonds/pkg/maturity"
 )
 
 func TestMaturities(t *testing.T) {
@@ -61,7 +61,7 @@ func TestMaturities(t *testing.T) {
 	}
 
 	for nr, test := range testData {
-		m := bonds.Maturities{
+		m := maturity.T{
 			Settlement: test.Quote,
 			Maturity:   test.Maturity,
 			Frequency:  test.Frequency,
@@ -115,7 +115,7 @@ func TestMaturitiesDayCountFraction(t *testing.T) {
 	}
 
 	for nr, test := range testData {
-		m := bonds.Maturities{
+		m := maturity.T{
 			Settlement: test.Quote,
 			Maturity:   test.Maturity,
 			Frequency:  test.Frequency,

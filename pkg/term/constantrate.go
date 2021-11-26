@@ -1,4 +1,4 @@
-package bonds
+package term
 
 import "math"
 

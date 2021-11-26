@@ -7,12 +7,15 @@ import (
 	"time"
 
 	"github.com/konimarti/bonds"
+	"github.com/konimarti/bonds/pkg/bond"
+	"github.com/konimarti/bonds/pkg/maturity"
+	"github.com/konimarti/bonds/pkg/term"
 )
 
 func TestYields(t *testing.T) {
 
 	testData := []struct {
-		B              bonds.Bond
+		B              bonds.Security
 		Quote          float64
 		ExpectedIRR    float64
 		ExpectedSpread float64
@@ -20,8 +23,8 @@ func TestYields(t *testing.T) {
 		{
 			// bond details
 			// ISIN CH0224396983 (quote per 2021-04-01)
-			B: bonds.Bond{
-				Schedule: bonds.Maturities{
+			B: &bond.Straight{
+				Schedule: maturity.T{
 					Settlement: time.Date(2021, 4, 1, 0, 0, 0, 0, time.UTC),
 					Maturity:   time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC),
 					Frequency:  1,
@@ -35,8 +38,8 @@ func TestYields(t *testing.T) {
 		},
 		{
 			// ISIN CH0193265995 (quote per 2021-04-16)
-			B: bonds.Bond{
-				Schedule: bonds.Maturities{
+			B: &bond.Straight{
+				Schedule: maturity.T{
 					Settlement: time.Date(2021, 4, 15, 0, 0, 0, 0, time.UTC),
 					Maturity:   time.Date(2022, 9, 21, 0, 0, 0, 0, time.UTC),
 					Frequency:  1,
@@ -51,7 +54,7 @@ func TestYields(t *testing.T) {
 	}
 
 	// term structure (parameters per 2021-04-01 for CH govt bonds)
-	term := bonds.NelsonSiegelSvensson{
+	term := term.NelsonSiegelSvensson{
 		-0.266372,
 		-0.471343,
 		5.68789,

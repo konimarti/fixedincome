@@ -1,19 +1,24 @@
-package bonds
+package bond
 
-// Bond represents a fixed income security
-type Bond struct {
-	Schedule   Maturities
+import (
+	"github.com/konimarti/bonds/pkg/maturity"
+	"github.com/konimarti/bonds/pkg/term"
+)
+
+// Straight represents a straight-bond fixed income security
+type Straight struct {
+	Schedule   maturity.T
 	Coupon     float64
 	Redemption float64
 }
 
 // Accrued calculated the accrued interest
-func (b *Bond) Accrued() float64 {
+func (b *Straight) Accrued() float64 {
 	return b.Coupon * b.Schedule.DayCountFraction()
 }
 
 // Pricing returns the "dirty" and the "clean" prices (adjusted for accrued interest)
-func (b *Bond) Pricing(spread float64, ts TermStructure) (float64, float64) {
+func (b *Straight) Pricing(spread float64, ts term.Structure) (float64, float64) {
 	dcf := 0.0
 
 	maturities := b.Schedule.M()
@@ -31,12 +36,12 @@ func (b *Bond) Pricing(spread float64, ts TermStructure) (float64, float64) {
 }
 
 // YearsToMaturity calculates the number of years until maturity
-func (b *Bond) YearsToMaturity() float64 {
+func (b *Straight) YearsToMaturity() float64 {
 	return b.Schedule.YearsToMaturity()
 }
 
 // Duration calculates the modified duration of the bond
-func (b *Bond) Duration(spread float64, ts TermStructure) float64 {
+func (b *Straight) Duration(spread float64, ts term.Structure) float64 {
 	duration := 0.0
 
 	maturities := b.Schedule.M()

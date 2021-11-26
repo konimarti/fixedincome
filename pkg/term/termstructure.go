@@ -1,7 +1,7 @@
-package bonds
+package term
 
-// TermStructure implements the interface for the spot rate term structure of interest
-type TermStructure interface {
+// Structure implements the interface for the spot rate term structure of interest
+type Structure interface {
 
 	// annual forward rate for the given maturity
 	// Forward(m float64, t float64) float64
