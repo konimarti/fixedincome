@@ -24,7 +24,7 @@ func TestYields(t *testing.T) {
 			// bond details
 			// ISIN CH0224396983 (quote per 2021-04-01)
 			B: &bond.Straight{
-				Schedule: maturity.T{
+				Schedule: maturity.Schedule{
 					Settlement: time.Date(2021, 4, 1, 0, 0, 0, 0, time.UTC),
 					Maturity:   time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC),
 					Frequency:  1,
@@ -39,7 +39,7 @@ func TestYields(t *testing.T) {
 		{
 			// ISIN CH0193265995 (quote per 2021-04-16)
 			B: &bond.Straight{
-				Schedule: maturity.T{
+				Schedule: maturity.Schedule{
 					Settlement: time.Date(2021, 4, 15, 0, 0, 0, 0, time.UTC),
 					Maturity:   time.Date(2022, 9, 21, 0, 0, 0, 0, time.UTC),
 					Frequency:  1,

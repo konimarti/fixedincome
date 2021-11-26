@@ -15,7 +15,7 @@ func TestBondsPricing(t *testing.T) {
 	// bond details
 	// ISIN CH0224396983 (quote per 2021-04-01)
 	bond := bond.Straight{
-		Schedule: maturity.T{
+		Schedule: maturity.Schedule{
 			Settlement: time.Date(2021, 4, 1, 0, 0, 0, 0, time.UTC),
 			Maturity:   time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC),
 			Frequency:  1,
@@ -72,7 +72,7 @@ func TestAccruedInterest(t *testing.T) {
 	for nr, test := range testData {
 
 		bond := bond.Straight{
-			Schedule: maturity.T{
+			Schedule: maturity.Schedule{
 				Settlement: test.Quote,
 				Maturity:   test.Maturity,
 				Frequency:  test.Frequency,
@@ -119,7 +119,7 @@ func TestDuration(t *testing.T) {
 	for nr, test := range testData {
 
 		bond := bond.Straight{
-			Schedule: maturity.T{
+			Schedule: maturity.Schedule{
 				Settlement: test.Quote,
 				Maturity:   test.Maturity,
 				Frequency:  test.Frequency,

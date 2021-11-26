@@ -6,8 +6,8 @@ import (
 	"github.com/konimarti/daycount"
 )
 
-// T contain the information about the term maturities of the bond's cash flows
-type T struct {
+// Schedule contain the information about the term maturities of the bond's cash flows
+type Schedule struct {
 	// Settlement represent the date of valuation (or settlement)
 	Settlement time.Time
 	// Maturity represents the maturity date
@@ -19,23 +19,23 @@ type T struct {
 }
 
 //Compounding returns the annual compounding frequency
-func (t *T) Compounding() int {
+func (m *Schedule) Compounding() int {
 	n := 1
-	if t.Frequency > 0 {
-		n = t.Frequency
+	if m.Frequency > 0 {
+		n = m.Frequency
 	}
 	return n
 }
 
 //M returns a slice of the effective maturities in years of the bond's cash flows
-func (t *T) M() []float64 {
+func (m *Schedule) M() []float64 {
 	maturities := []float64{}
 
-	step := 12 / t.Compounding()
+	step := 12 / m.Compounding()
 
 	// walk back from maturity date to quote date
-	quote := t.Settlement
-	for current := t.Maturity; current.Sub(quote) > 0; current = current.AddDate(0, -step, 0) {
+	quote := m.Settlement
+	for current := m.Maturity; current.Sub(quote) > 0; current = current.AddDate(0, -step, 0) {
 		maturities = append(maturities, actualDifferenceInYears(quote, current))
 	}
 
@@ -43,21 +43,21 @@ func (t *T) M() []float64 {
 }
 
 //YearsToMaturity calculates the time in years to redemption
-func (t *T) YearsToMaturity() float64 {
-	if t.Maturity.Before(t.Settlement) {
+func (m *Schedule) YearsToMaturity() float64 {
+	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
-	return actualDifferenceInYears(t.Settlement, t.Maturity)
+	return actualDifferenceInYears(m.Settlement, m.Maturity)
 }
 
 // DayCountFraction returns year fraction since last coupon
-func (t *T) DayCountFraction() float64 {
-	if t.Maturity.Before(t.Settlement) {
+func (m *Schedule) DayCountFraction() float64 {
+	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
-	step := 12 / t.Compounding()
-	d1 := t.Maturity
-	d2 := t.Settlement
+	step := 12 / m.Compounding()
+	d1 := m.Maturity
+	d2 := m.Settlement
 	d3 := time.Time{}
 
 	// iterate maturity date backwards until last coupon date before settlement date
@@ -66,7 +66,7 @@ func (t *T) DayCountFraction() float64 {
 	}
 
 	// calculate day count fraction
-	frac := daycount.Fraction(d1, d2, d3, t.Compounding(), t.Basis)
+	frac := daycount.Fraction(d1, d2, d3, m.Compounding(), m.Basis)
 
 	return frac
 }

@@ -64,7 +64,7 @@ func main() {
 
 	// create fixed-coupon bond
 	bond := bond.Straight{
-		Schedule: maturity.T{
+		Schedule: maturity.Schedule{
 			Settlement: quoteDate,
 			Maturity:   maturityDate,
 			Frequency:  *frequency,

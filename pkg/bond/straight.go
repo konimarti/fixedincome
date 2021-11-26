@@ -7,7 +7,7 @@ import (
 
 // Straight represents a straight-bond fixed income security
 type Straight struct {
-	Schedule   maturity.T
+	Schedule   maturity.Schedule
 	Coupon     float64
 	Redemption float64
 }

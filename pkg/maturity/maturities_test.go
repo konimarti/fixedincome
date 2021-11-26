@@ -61,7 +61,7 @@ func TestMaturities(t *testing.T) {
 	}
 
 	for nr, test := range testData {
-		m := maturity.T{
+		m := maturity.Schedule{
 			Settlement: test.Quote,
 			Maturity:   test.Maturity,
 			Frequency:  test.Frequency,
@@ -115,7 +115,7 @@ func TestMaturitiesDayCountFraction(t *testing.T) {
 	}
 
 	for nr, test := range testData {
-		m := maturity.T{
+		m := maturity.Schedule{
 			Settlement: test.Quote,
 			Maturity:   test.Maturity,
 			Frequency:  test.Frequency,
