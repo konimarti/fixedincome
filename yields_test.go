@@ -68,7 +68,7 @@ func TestYields(t *testing.T) {
 	for nr, test := range testData {
 
 		// IRR
-		irr, err := bonds.IRR(test.Quote, test.B)
+		irr, err := bonds.Irr(test.Quote, test.B)
 		// fmt.Println(irr)
 		if err != nil {
 			fmt.Println(err)

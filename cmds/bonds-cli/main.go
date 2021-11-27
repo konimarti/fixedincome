@@ -111,7 +111,7 @@ func main() {
 	}
 
 	fmt.Printf("  Price               %10.2f\n", bondPrice)
-	irr, err := bonds.IRR(bondPrice, &bond)
+	irr, err := bonds.Irr(bondPrice, &bond)
 	if err != nil {
 		log.Fatal(err)
 	}

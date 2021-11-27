@@ -36,7 +36,7 @@ func (m *Schedule) M() []float64 {
 	// walk back from maturity date to quote date
 	quote := m.Settlement
 	for current := m.Maturity; current.Sub(quote) > 0; current = current.AddDate(0, -step, 0) {
-		maturities = append(maturities, actualDifferenceInYears(quote, current))
+		maturities = append(maturities, DifferenceInYears(quote, current))
 	}
 
 	return maturities
@@ -47,7 +47,7 @@ func (m *Schedule) YearsToMaturity() float64 {
 	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
-	return actualDifferenceInYears(m.Settlement, m.Maturity)
+	return DifferenceInYears(m.Settlement, m.Maturity)
 }
 
 // DayCountFraction returns year fraction since last coupon
@@ -71,13 +71,6 @@ func (m *Schedule) DayCountFraction() float64 {
 	return frac
 }
 
-// helper functions
-
-// actualDifferenceinYears returns the difference between two dates in years (Act/Act)
-func actualDifferenceInYears(start, stop time.Time) float64 {
-	return float64(stop.Sub(start).Hours()) / 24.0 / 365.25
-}
-
 // Actual difference between two dates in years
 // func ActualDifferenceInYears(start, stop time.Time) float64 {
 // 	years := 0.0
@@ -99,18 +92,4 @@ func actualDifferenceInYears(start, stop time.Time) float64 {
 // 	years += float64(stop.Hour()) / 24.0 / DaysInYear(stop.Year())
 //
 // 	return years
-// }
-
-// DaysInYear calculates the number of days in the given year
-// func DaysInYear(year int) float64 {
-// 	return float64(time.Date(year, 12, 31, 0, 0, 0, 0, time.UTC).YearDay())
-// }
-
-// LastDay of a given year
-// func LastDay(year int) time.Time {
-// 	return time.Date(year, 12, 31, 0, 0, 0, 0, time.UTC)
-// }
-// FirstDay of a given year
-// func FirstDay(year int) time.Time {
-// 	return time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
 // }

@@ -5,27 +5,27 @@ import (
 	"github.com/konimarti/bonds/pkg/term"
 )
 
-// IRR calculates the internal return of the straight bond (i.e. yield to maturity)
-func IRR(quotedprice float64, s Security) (float64, error) {
-	precision := 6
+var (
+	Precision = 6
+)
 
+// Irr calculates the internal rate of return of a security
+func Irr(investment float64, s Security) (float64, error) {
 	f := func(irr float64) float64 {
-		return s.PresentValue(&term.ConstantRate{irr, 0.0}) - quotedprice
+		return s.PresentValue(&term.ConstantRate{irr, 0.0}) - investment
 	}
 
-	root, err := rootfinding.Brent(f, -20.0, 20.0, precision)
+	root, err := rootfinding.Brent(f, -20.0, 20.0, Precision)
 	return root, err
 }
 
-// Spread calculates the implied static (zero-volatility) spread for a given term structure
-func Spread(quotedprice float64, s Security, ts term.Structure) (float64, error) {
-	precision := 6
-
+// Spread calculates the implied static (zero-volatility) spread
+func Spread(investment float64, s Security, ts term.Structure) (float64, error) {
 	f := func(spread float64) float64 {
 		value := s.PresentValue(ts.SetSpread(spread))
-		return value - quotedprice
+		return value - investment
 	}
 
-	root, err := rootfinding.Brent(f, -10.0, 10000.0, precision)
+	root, err := rootfinding.Brent(f, -10.0, 10000.0, Precision)
 	return root, err
 }
