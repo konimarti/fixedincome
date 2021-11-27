@@ -18,7 +18,7 @@ func (c *ConstantRate) SetSpread(spread float64) Structure {
 	return c
 }
 
-// Rate returns the annual spot rate (spread not considered)
+// Rate returns the annual spot risk-free rate (spread not considered)
 func (c *ConstantRate) Rate(m float64) float64 {
 	return c.R
 }

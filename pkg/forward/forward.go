@@ -13,7 +13,7 @@ type Forward struct {
 	M float64
 }
 
-// PresentValue returns the F0,t for the given StockForward
+// PresentValue returns the value of the forward contract
 func (f *Forward) PresentValue(ts term.Structure) float64 {
 	return (f.K - f.F) * ts.Z(f.M, 1)
 }
