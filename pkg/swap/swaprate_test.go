@@ -1,7 +1,6 @@
 package swap_test
 
 import (
-	"fmt"
 	"math"
 	"testing"
 
@@ -40,7 +39,7 @@ func TestSwapFxRate(t *testing.T) {
 
 	expectedRate := 1.389
 
-	fmt.Println("Swaprate", swapRate, "Expected", expectedRate)
+	// fmt.Println("Swaprate", swapRate, "Expected", expectedRate)
 
 	if math.Abs(swapRate-expectedRate) > 0.001 {
 		t.Error("swap rate calculation is wrong")

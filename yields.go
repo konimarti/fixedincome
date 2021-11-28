@@ -29,3 +29,15 @@ func Spread(investment float64, s Security, ts term.Structure) (float64, error) 
 	root, err := rootfinding.Brent(f, -10.0, 10000.0, Precision)
 	return root, err
 }
+
+// ImpliedVola calculates the implied volatility for a given option price
+func ImpliedVola(price float64, o Option, ts term.Structure) (float64, error) {
+	f := func(vola float64) float64 {
+		o.SetVola(vola)
+		value := o.PresentValue(ts)
+		return value - price
+	}
+
+	root, err := rootfinding.Brent(f, 0.0, 1000.0, Precision)
+	return root, err
+}

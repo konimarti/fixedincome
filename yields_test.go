@@ -9,6 +9,7 @@ import (
 	"github.com/konimarti/bonds"
 	"github.com/konimarti/bonds/pkg/bond"
 	"github.com/konimarti/bonds/pkg/maturity"
+	"github.com/konimarti/bonds/pkg/option"
 	"github.com/konimarti/bonds/pkg/term"
 )
 
@@ -91,6 +92,42 @@ func TestYields(t *testing.T) {
 
 		if math.Abs(spread-test.ExpectedSpread) > 1.0 {
 			t.Errorf("wrong Z-Spread for test nr %d, got %f, expected %f", nr, spread, test.ExpectedSpread)
+		}
+	}
+}
+
+func TestImpliedVola(t *testing.T) {
+	testOption := option.European{
+		option.Call,
+		110.0,
+		100.0,
+		2.0,
+		0.0,
+		math.Pi,
+	}
+	ts := term.ConstantRate{term.ToAnnual(2.0), 0.0}
+
+	expected := 0.3
+
+	tests := []struct {
+		OptionType int
+		Price      float64
+	}{
+		{
+			OptionType: option.Call,
+			Price:      25.1291,
+		},
+		{
+			OptionType: option.Put,
+			Price:      11.2080,
+		},
+	}
+
+	for _, test := range tests {
+		testOption.Type = test.OptionType
+		vola, err := bonds.ImpliedVola(test.Price, &testOption, &ts)
+		if err != nil || math.Abs(vola-expected) > 0.0001 {
+			t.Error("Type", test.OptionType, "Got", vola, "Expected", expected)
 		}
 	}
 }
