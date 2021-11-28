@@ -15,7 +15,7 @@ type Forward struct {
 
 // PresentValue returns the value of the forward contract
 func (f *Forward) PresentValue(ts term.Structure) float64 {
-	return (f.K - f.F) * ts.Z(f.M, 1)
+	return (f.K - f.F) * ts.Z(f.M)
 }
 
 //
@@ -25,17 +25,17 @@ func (f *Forward) PresentValue(ts term.Structure) float64 {
 // Fx calculates the forward rate for the currency pair (two term structure)
 // If currentFx is CHF/EUR, then tsLong should be CHF rats and tsShort should be EUR rates
 func Fx(currentFx, t float64, tsLong, tsShort term.Structure) (float64, error) {
-	return currentFx * tsShort.Z(t, 1) / tsLong.Z(t, 1), nil
+	return currentFx * tsShort.Z(t) / tsLong.Z(t), nil
 }
 
 // ZeroBond calculates the forward price for buying a zero-bond at time t with maturity m
 func ZeroBond(t, m float64, ts term.Structure) (float64, error) {
-	return ts.Z(m, 1) / ts.Z(t, 1), nil
+	return ts.Z(m) / ts.Z(t), nil
 }
 
 // Stock calculates the forward price for a stock with no dividends
 func Stock(currentPrice, t float64, ts term.Structure) (float64, error) {
-	return currentPrice / ts.Z(t, 1), nil
+	return currentPrice / ts.Z(t), nil
 }
 
 // func StockDividendYield(stockPrice, dividendYield, maturity float64, ts term.Structure) (float64, error) {

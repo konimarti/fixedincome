@@ -26,11 +26,11 @@ func (b *Straight) PresentValue(ts term.Structure) float64 {
 
 	// discount coupon payments
 	for _, m := range maturities {
-		dcf += b.Coupon / float64(n) * ts.Z(m, n)
+		dcf += b.Coupon / float64(n) * ts.Z(m)
 	}
 
 	// discount redemption value
-	dcf += b.Redemption * ts.Z(b.YearsToMaturity(), n)
+	dcf += b.Redemption * ts.Z(b.YearsToMaturity())
 
 	return dcf - b.Accrued()
 }
@@ -53,12 +53,12 @@ func (b *Straight) Duration(ts term.Structure) float64 {
 
 	// discount coupon payments
 	for _, m := range maturities {
-		duration += m * b.Coupon / float64(n) * ts.Z(m, n)
+		duration += m * b.Coupon / float64(n) * ts.Z(m)
 	}
 
 	// discount redemption value
 	years := b.YearsToMaturity()
-	duration += years * b.Redemption * ts.Z(years, n)
+	duration += years * b.Redemption * ts.Z(years)
 
 	return duration / p
 }

@@ -22,8 +22,8 @@ func TestSwapFxRate(t *testing.T) {
 	// Plain vanilly FX swap to hedge exchange risk: what is swap rate K?
 
 	// Assume rates are constant across maturities
-	termEur := term.ConstantRate{(math.Exp(4.0/100.0) - 1.0) * 100.0, 0.0}
-	termUsd := term.ConstantRate{(math.Exp(6.0/100.0) - 1.0) * 100.0, 0.0}
+	termEur := term.Flat{4.0, 0.0}
+	termUsd := term.Flat{6.0, 0.0}
 
 	m0 := 1.2673
 

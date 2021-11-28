@@ -17,7 +17,7 @@ var (
 		0.0,
 		0.3,
 	}
-	ts = term.ConstantRate{term.ToAnnual(2.0), 0.0}
+	ts = term.Flat{2.0, 0.0}
 )
 
 func TestN(t *testing.T) {

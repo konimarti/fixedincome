@@ -1,10 +1,10 @@
-package term_test
+package rate_test
 
 import (
 	"math"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/bonds/pkg/rate"
 )
 
 var (
@@ -13,13 +13,13 @@ var (
 )
 
 func TestToCC(t *testing.T) {
-	if math.Abs(term.ToCC(annualRate)-ccRate) > 1e-6 {
+	if math.Abs(rate.ToCC(annualRate)-ccRate) > 1e-6 {
 		t.Errorf("conversion from annual to cc rate failed")
 	}
 }
 
 func TestToAnnual(t *testing.T) {
-	if math.Abs(term.ToAnnual(ccRate)-annualRate) > 1e-6 {
+	if math.Abs(rate.ToAnnual(ccRate)-annualRate) > 1e-6 {
 		t.Errorf("conversion from cc to annual rate failed")
 	}
 }

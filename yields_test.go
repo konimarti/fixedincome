@@ -50,7 +50,7 @@ func TestYields(t *testing.T) {
 			},
 			Quote:          102.22,
 			ExpectedIRR:    -0.54,
-			ExpectedSpread: 25.00, // EUR-AA Rating for Financial Companies with Maturity 1Y 26.26 bps
+			ExpectedSpread: 12.432,
 		},
 	}
 
@@ -78,7 +78,7 @@ func TestYields(t *testing.T) {
 
 		// fmt.Println("Remaining years:", test.B.RemainingYears())
 
-		if math.Abs(irr-test.ExpectedIRR) > 0.05 {
+		if math.Abs(irr-test.ExpectedIRR) > 0.1 {
 			t.Errorf("wrong IRR for test nr %d, got %f, expected %f", nr, irr, test.ExpectedIRR)
 		}
 
@@ -90,7 +90,7 @@ func TestYields(t *testing.T) {
 			t.Errorf("zspread failed for test nr %d", nr)
 		}
 
-		if math.Abs(spread-test.ExpectedSpread) > 1.0 {
+		if math.Abs(spread-test.ExpectedSpread) > 0.1 {
 			t.Errorf("wrong Z-Spread for test nr %d, got %f, expected %f", nr, spread, test.ExpectedSpread)
 		}
 	}
@@ -105,7 +105,7 @@ func TestImpliedVola(t *testing.T) {
 		0.0,
 		math.Pi,
 	}
-	ts := term.ConstantRate{term.ToAnnual(2.0), 0.0}
+	ts := term.Flat{2.0, 0.0}
 
 	expected := 0.3
 

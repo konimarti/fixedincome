@@ -27,11 +27,12 @@ type European struct {
 	Vola float64
 }
 
+// Presentvalues implements the Black-Scholes pricing for European call and put options
 func (e *European) PresentValue(ts term.Structure) float64 {
 	var value float64
 	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
 	d2 := D2(d1, e.T, e.Vola)
-	z := math.Exp(-term.ToCC(ts.Rate(e.T)) / 100.0 * e.T)
+	z := ts.Z(e.T)
 	if e.Type == Call {
 		value = e.S*math.Exp(-e.Q/100.0*e.T)*N(d1) - e.K*z*N(d2)
 	} else if e.Type == Put {
@@ -45,7 +46,7 @@ func (e *European) SetVola(newVola float64) {
 }
 
 func D1(S, K, T, Q, Vola float64, ts term.Structure) float64 {
-	return (math.Log(S/K) + (term.ToCC(ts.Rate(T))/100.0-Q/100.0+math.Pow(Vola, 2.0)/2.0)*T) / (Vola * math.Sqrt(T))
+	return (math.Log(S/K) + (ts.Rate(T)/100.0-Q/100.0+math.Pow(Vola, 2.0)/2.0)*T) / (Vola * math.Sqrt(T))
 }
 
 func D2(d1, T, Vola float64) float64 {

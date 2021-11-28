@@ -12,7 +12,7 @@ var (
 // Irr calculates the internal rate of return of a security
 func Irr(investment float64, s Security) (float64, error) {
 	f := func(irr float64) float64 {
-		return s.PresentValue(&term.ConstantRate{irr, 0.0}) - investment
+		return s.PresentValue(&term.Flat{irr, 0.0}) - investment
 	}
 
 	root, err := rootfinding.Brent(f, -20.0, 20.0, Precision)

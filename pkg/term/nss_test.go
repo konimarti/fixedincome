@@ -40,9 +40,10 @@ func TestNelsonSiegelSvensson(t *testing.T) {
 	}
 
 	for _, test := range data {
-		rate := math.Round(n.Rate(test.M)*1e3) / 1e3
-		if math.Abs(rate-test.RateInPercent) > 0.001 {
-			t.Errorf("got %f, but wanted %f, failed for maturity %f", rate, test.RateInPercent, test.M)
+		got := n.Rate(test.M)
+		expected := math.Log(1.0+test.RateInPercent/100.0) * 100.0
+		if math.Abs(got-expected) > 0.001 {
+			t.Errorf("got %f, but wanted %f, failed for maturity %f", got, expected, test.M)
 		}
 	}
 }

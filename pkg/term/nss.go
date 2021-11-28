@@ -20,8 +20,8 @@ func (nss *NelsonSiegelSvensson) SetSpread(s float64) Structure {
 	return nss
 }
 
-// r returns the continuous compounded spot rate in percent for a maturity of m years
-func (nss *NelsonSiegelSvensson) r(m float64) float64 {
+// R returns the continuous compounded spot rate in percent for a maturity of m years
+func (nss *NelsonSiegelSvensson) Rate(m float64) float64 {
 	cc := nss.B0
 	cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m)
 	cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m) - math.Exp(-m/nss.T1))
@@ -29,29 +29,29 @@ func (nss *NelsonSiegelSvensson) r(m float64) float64 {
 	// cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) / (m / nss.T1))
 	// cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) / (m / nss.T1)) - math.Exp(-m/nss.T1))
 	// cc += nss.B3 * (((1.0 - math.Exp(-m/nss.T2)) / (m / nss.T2)) - math.Exp(-m/nss.T2))
-	return cc
+	return cc + nss.Spread*0.01
 }
 
 // z return the discount factor for a maturity of m years (spread not considered)
-func (nss *NelsonSiegelSvensson) z(m float64) float64 {
-	return math.Exp(-nss.r(m) * 0.01 * m)
+func (nss *NelsonSiegelSvensson) Z(m float64) float64 {
+	return math.Exp(-(nss.Rate(m) + nss.Spread*0.01) * 0.01 * m)
 }
 
 // Rate returns the annually compounded spot rate in percents for a maturity of m years (spread not considered)
-func (nss *NelsonSiegelSvensson) Rate(m float64) float64 {
-	return (math.Exp(nss.r(m)*0.01) - 1.0) * 100.0
-}
+// func (nss *NelsonSiegelSvensson) Rate(m float64) float64 {
+// 	return (math.Exp(nss.r(m)*0.01) - 1.0) * 100.0
+// }
 
 // Z return the discount factor to discount the cash flows for a maturity of m years.
 // coumpounding is the compounding frequency (if 0, set to 1 by default)
 // The discount factor includes the zero-volatility spread.
-func (nss *NelsonSiegelSvensson) Z(m float64, compounding int) float64 {
-	n := 1.0
-	if compounding > 0 {
-		n = float64(compounding)
-	}
-	return math.Pow(1.0+(nss.Rate(m)*0.01+nss.Spread*0.0001)/n, -m*n)
-}
+// func (nss *NelsonSiegelSvensson) Z(m float64, compounding int) float64 {
+// 	n := 1.0
+// 	if compounding > 0 {
+// 		n = float64(compounding)
+// 	}
+// 	return math.Pow(1.0+(nss.Rate(m)*0.01+nss.Spread*0.0001)/n, -m*n)
+// }
 
 // F is the forward discount factor at time T1=m years
 // func (n *NelsonSiegelSvensson) F(m, t float64) float64 {
