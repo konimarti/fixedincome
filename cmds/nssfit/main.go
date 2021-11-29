@@ -81,8 +81,8 @@ func main() {
 		sst := 0.0
 		for i, bond := range bonds {
 			t := bond.YearsToMaturity()
-			if t >= 1.0/12.0 {
-				sst += math.Pow(bond.PresentValue(&term)-prices[i], 2.0) / t
+			if t >= 3.0/12.0 {
+				sst += math.Pow(bond.PresentValue(&term)-prices[i], 2.0) / (t * t)
 			}
 		}
 		return sst
