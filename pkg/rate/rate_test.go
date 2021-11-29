@@ -8,18 +8,26 @@ import (
 )
 
 var (
-	annualRate = 12.0
-	ccRate     = 11.332869
+	annualRate           = 12.0
+	monthlyEffectiveRate = math.Pow(1.01, 12)
+	ccRate               = 11.332869
 )
 
-func TestToCC(t *testing.T) {
-	if math.Abs(rate.ToCC(annualRate)-ccRate) > 1e-6 {
+func TestContinuous(t *testing.T) {
+	if math.Abs(rate.Continuous(annualRate)-ccRate) > 1e-6 {
 		t.Errorf("conversion from annual to cc rate failed")
 	}
 }
 
-func TestToAnnual(t *testing.T) {
-	if math.Abs(rate.ToAnnual(ccRate)-annualRate) > 1e-6 {
+func TestAnnual(t *testing.T) {
+	if math.Abs(rate.Annual(ccRate)-annualRate) > 1e-6 {
+		t.Errorf("conversion from cc to annual rate failed")
+	}
+}
+
+func TestEffectiveAnnual(t *testing.T) {
+	n := 12 // monthly compounding
+	if math.Abs(rate.EffectiveAnnual(annualRate, n)-monthlyEffectiveRate) > 1e-6 {
 		t.Errorf("conversion from cc to annual rate failed")
 	}
 }
