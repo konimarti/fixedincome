@@ -1,0 +1,17 @@
+df<-read.csv("result.csv", header=F)
+colnames(df)<-c("t","r","f","theta","rhl")
+save<-par(mfrow=c(2,1))
+minY<-min(df[,c(2,3)])
+maxY<-max(df[,c(2,3)])
+x<-(df$t)
+with(df, {
+	plot(x, r,type="l",pch=3, lwd=2, ylim=c(minY,maxY),main="Spot rate and forward rate curves", ylab="Rates in %", xlab="Time to maturity")
+	lines(x, f, col="red", type="l",lwd=2,pch=3)
+	lines(x, rhl, col="green", type="l",lwd=2,pch=3)
+	legend("topleft", legend=c("Spot rate curve", "Forward rate curve"), lty=1, col=c("black","red"))
+})
+with(df, {
+	plot(x, theta,type="l",pch=3, lwd=2,main="Theta's of Ho-Lee model", ylab="Thetas", xlab="Time to maturity")
+	# legend("topleft", legend=c("Quoted Price", "Calculated Price"), lty=1, col=c("black","red"))
+})
+par(save)
