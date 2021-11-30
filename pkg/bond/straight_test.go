@@ -90,21 +90,23 @@ func TestAccruedInterest(t *testing.T) {
 	}
 }
 
-func TestDuration(t *testing.T) {
+func TestDurationConvexity(t *testing.T) {
 
 	testData := []struct {
-		Quote     time.Time
-		Maturity  time.Time
-		Coupon    float64
-		Frequency int
-		Expected  float64
+		Quote             time.Time
+		Maturity          time.Time
+		Coupon            float64
+		Frequency         int
+		ExpectedDuration  float64
+		ExpectedConvexity float64
 	}{
 		{
-			Quote:     time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
-			Maturity:  time.Date(2031, 1, 1, 0, 0, 0, 0, time.UTC),
-			Coupon:    0.0,
-			Frequency: 1,
-			Expected:  10.0,
+			Quote:             time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
+			Maturity:          time.Date(2031, 1, 1, 0, 0, 0, 0, time.UTC),
+			Coupon:            0.0,
+			Frequency:         1,
+			ExpectedDuration:  -10.0,
+			ExpectedConvexity: 100.0,
 		},
 	}
 
@@ -131,8 +133,12 @@ func TestDuration(t *testing.T) {
 		}
 
 		duration := bond.Duration(&term)
-		if math.Abs(duration-test.Expected) > 0.01 {
-			t.Errorf("test nr %d, got %f, expected %f", nr, duration, test.Expected)
+		if math.Abs(duration-test.ExpectedDuration) > 0.01 {
+			t.Errorf("test nr %d, got %f, expected %f", nr, duration, test.ExpectedDuration)
+		}
+		convex := bond.Convexity(&term)
+		if math.Abs(convex-test.ExpectedConvexity) > 0.1 {
+			t.Errorf("test nr %d, got %f, expected %f", nr, convex, test.ExpectedConvexity)
 		}
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/konimarti/daycount"
 )
 
-// Schedule contain the information about the term maturities of the bond's cash flows
+// Schedule contain the information about the term maturities of fixed income security's cash flows
 type Schedule struct {
 	// Settlement represent the date of valuation (or settlement)
 	Settlement time.Time
