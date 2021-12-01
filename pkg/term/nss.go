@@ -22,6 +22,9 @@ func (nss *NelsonSiegelSvensson) SetSpread(s float64) Structure {
 
 // R returns the continuous compounded spot rate in percent for a maturity of m years
 func (nss *NelsonSiegelSvensson) Rate(m float64) float64 {
+	if m == 0.0 {
+		m = 1e-7
+	}
 	cc := nss.B0
 	cc += nss.B1 * ((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m)
 	cc += nss.B2 * (((1.0 - math.Exp(-m/nss.T1)) * nss.T1 / m) - math.Exp(-m/nss.T1))
