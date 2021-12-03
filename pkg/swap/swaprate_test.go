@@ -66,25 +66,34 @@ func TestSwapInterestRate(t *testing.T) {
 		9.0,
 	}
 
+	maturities := []int{
+		3, 4, 5, 6, 7, 8, 9, 10,
+	}
+	expectedSwapRate := []float64{
+		-0.50, -0.42, -0.35, -0.28, -0.21, -0.15, -0.10, -0.06,
+	}
+
 	date := time.Date(2021, 12, 3, 0, 0, 0, 0, time.UTC)
-	schedule := maturity.Schedule{
-		Settlement: date,
-		Maturity:   date.AddDate(5, 0, 0),
-		Frequency:  2,
-		Basis:      "30E360",
-	}
+	for i, m := range maturities {
+		schedule := maturity.Schedule{
+			Settlement: date,
+			Maturity:   date.AddDate(m, 0, 0),
+			Frequency:  2,
+			Basis:      "30E360",
+		}
 
-	swapRate, err := swap.InterestRate(schedule, &term)
-	if err != nil {
-		t.Error(err)
-	}
+		swapRate, err := swap.InterestRate(schedule, &term)
+		if err != nil {
+			t.Error(err)
+		}
 
-	expectedRate := -0.34
+		expectedRate := expectedSwapRate[i]
 
-	// fmt.Println("Swaprate", swapRate, "Expected", expectedRate)
+		// fmt.Println("Swaprate", swapRate, "Expected", expectedRate)
 
-	if math.Abs(swapRate-expectedRate) > 0.001 {
-		t.Error("interest swap rate calculation is wrong; got:", swapRate, "expected:", expectedRate)
+		if math.Abs(swapRate-expectedRate) > 0.05 {
+			t.Error("interest swap rate calculation is wrong; maturity:", m, "got:", swapRate, "expected:", expectedRate)
+		}
 	}
 
 }
