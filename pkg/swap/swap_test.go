@@ -12,7 +12,7 @@ import (
 	"github.com/konimarti/bonds/pkg/term"
 )
 
-func TestSwapValue(t *testing.T) {
+func TestInterestRateSwapValue(t *testing.T) {
 	// Parameters for CHF yield curve at Nov-30-2021
 	// added 9bps z-spread for counterparty risk
 	term := term.NelsonSiegelSvensson{
@@ -53,7 +53,7 @@ func TestSwapValue(t *testing.T) {
 			Redemption: 100.0,
 		}
 
-		swapSecurity := swap.Swap{
+		swapSecurity := swap.InterestRateSwap{
 			Floating: floatingLeg,
 			Fixed:    fixedLeg,
 		}
