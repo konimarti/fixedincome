@@ -3,13 +3,15 @@ package swap_test
 import (
 	"math"
 	"testing"
+	"time"
 
+	"github.com/konimarti/bonds/pkg/maturity"
 	"github.com/konimarti/bonds/pkg/swap"
 	"github.com/konimarti/bonds/pkg/term"
 )
 
 func TestSwapFxRate(t *testing.T) {
-	// Example from John Heaton - Fiancnial Instruments class at Chicago Booth, 2014
+	// Example from John Heaton - FinanciaFinancial Instruments class at Chicago Booth, 2014
 	// Teaching Notes 2, page 49
 	//
 	// Example:
@@ -42,7 +44,47 @@ func TestSwapFxRate(t *testing.T) {
 	// fmt.Println("Swaprate", swapRate, "Expected", expectedRate)
 
 	if math.Abs(swapRate-expectedRate) > 0.001 {
-		t.Error("swap rate calculation is wrong")
+		t.Error("fx swap rate calculation is wrong; got:", swapRate, "expected:", expectedRate)
+	}
+
+}
+
+func TestSwapInterestRate(t *testing.T) {
+
+	// calculating 5-year semi-annual CHF Swap Rate
+	// IRS CHF 5Y (CH0002113865)
+
+	// Parameters for CHF yield curve at Nov-30-2021
+	// added 9bps z-spread for counterparty risk
+	term := term.NelsonSiegelSvensson{
+		-0.43381,
+		-0.308942,
+		4.83643,
+		-4.10991,
+		4.65211,
+		3.33637,
+		9.0,
+	}
+
+	date := time.Date(2021, 12, 3, 0, 0, 0, 0, time.UTC)
+	schedule := maturity.Schedule{
+		Settlement: date,
+		Maturity:   date.AddDate(5, 0, 0),
+		Frequency:  2,
+		Basis:      "30E360",
+	}
+
+	swapRate, err := swap.InterestRate(schedule, &term)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedRate := -0.34
+
+	// fmt.Println("Swaprate", swapRate, "Expected", expectedRate)
+
+	if math.Abs(swapRate-expectedRate) > 0.001 {
+		t.Error("interest swap rate calculation is wrong; got:", swapRate, "expected:", expectedRate)
 	}
 
 }

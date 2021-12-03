@@ -29,7 +29,7 @@ func (f *Floating) PresentValue(ts term.Structure) float64 {
 	// discount face value at next reset date
 	pv += (f.Redemption + f.Rate/float64(n)) * ts.Z(maturities[len(maturities)-1])
 
-	return pv - f.Accrued()
+	return pv
 }
 
 // YearsToMaturity calculates the number of years until maturity

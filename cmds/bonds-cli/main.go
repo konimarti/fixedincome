@@ -78,8 +78,8 @@ func main() {
 	nss.SetSpread(*spread)
 
 	// price the bond
-	clean := bond.PresentValue(&nss)
-	dirty := clean + bond.Accrued()
+	dirty := bond.PresentValue(&nss)
+	clean := dirty - bond.Accrued()
 
 	fmt.Println("")
 	fmt.Printf("Settlement Date  : %s\n", quoteDate.Format("2006-01-02"))

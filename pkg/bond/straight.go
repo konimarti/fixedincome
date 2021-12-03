@@ -17,7 +17,8 @@ func (b *Straight) Accrued() float64 {
 	return b.Coupon * b.Schedule.DayCountFraction()
 }
 
-// PresentValue returns the "clean" bond prices (for the "dirty" price just add the accrued interest)
+// PresentValue returns the "dirty" bond prices
+// (for the "clean" price just subtract the accrued interest)
 func (b *Straight) PresentValue(ts term.Structure) float64 {
 	dcf := 0.0
 

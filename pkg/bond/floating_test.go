@@ -39,17 +39,34 @@ var (
 
 func TestFloatingPricing(t *testing.T) {
 
-	clean := floatingBond.PresentValue(&floatingTerm)
+	testData := []struct {
+		Floating bond.Floating
+		Expected float64
+	}{
+		{
+			Floating: floatingBond,
+			Expected: 100.0,
+		},
+		{
+			Floating: floatTwo,
+			Expected: 100.4975,
+		},
+	}
 
-	// fmt.Println("maturities=", floatingBond.Schedule.M())
-	// fmt.Println("dirty bond price=", clean+bond.Accrued()
-	// fmt.Println("accrued interest=", floatingBond.Accrued())
-	// fmt.Println("rate=", term.Rate(0.5), term.Rate(1.0))
-	// fmt.Println("clean bond price=", clean)
+	for i, test := range testData {
+		// fmt.Println("maturities=", floatingBond.Schedule.M())
+		// fmt.Println("dirty bond price=", clean+bond.Accrued()
+		// fmt.Println("accrued interest=", floatingBond.Accrued())
+		// fmt.Println("rate=", term.Rate(0.5), term.Rate(1.0))
+		// fmt.Println("clean bond price=", clean)
 
-	expected := 100.00
-	if math.Abs(clean-expected) > 0.01 {
-		t.Errorf("got %f, expected %f", clean, expected)
+		// PresentValue delivers the "dirty" price
+		dirty := test.Floating.PresentValue(&floatingTerm)
+		expected := test.Expected
+		if math.Abs(dirty-expected) > 0.01 {
+			t.Errorf("test nr %d, got %f, expected %f", i, dirty, expected)
+		}
+
 	}
 
 }

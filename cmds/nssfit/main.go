@@ -82,7 +82,8 @@ func main() {
 		for i, bond := range bonds {
 			t := bond.YearsToMaturity()
 			if t >= 1.5/12.0 {
-				sst += math.Pow(bond.PresentValue(&term)-prices[i], 2.0) / (t * t)
+				quotedPrice := bond.PresentValue(&term) - bond.Accrued() // aka clean price
+				sst += math.Pow(quotedPrice-prices[i], 2.0) / (t * t)
 			}
 		}
 		return sst
@@ -129,14 +130,14 @@ func main() {
 	}
 	output := [][]string{}
 	for i, bond := range bonds {
-		value := bond.PresentValue(&term)
+		quote := bond.PresentValue(&term) - bond.Accrued()
 		t := bond.YearsToMaturity()
 		output = append(output, []string{
 			fmt.Sprintf("%v", t),
 			fmt.Sprintf("%v", termStart.Rate(t)),
 			fmt.Sprintf("%v", term.Rate(t)),
 			fmt.Sprintf("%v", prices[i]),
-			fmt.Sprintf("%v", value),
+			fmt.Sprintf("%v", quote),
 		})
 
 	}
