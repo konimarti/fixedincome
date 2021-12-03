@@ -22,7 +22,7 @@ func TestInterestRateSwapValue(t *testing.T) {
 		-4.10991,
 		4.65211,
 		3.33637,
-		9.0,
+		10.0,
 	}
 
 	maturities := []int{
@@ -34,21 +34,27 @@ func TestInterestRateSwapValue(t *testing.T) {
 
 	date := time.Date(2021, 12, 3, 0, 0, 0, 0, time.UTC)
 	for i, m := range maturities {
-		schedule := maturity.Schedule{
+		scheduleFloating := maturity.Schedule{
 			Settlement: date,
 			Maturity:   date.AddDate(m, 0, 0),
 			Frequency:  2,
+			Basis:      "ACT360",
+		}
+		scheduleFixed := maturity.Schedule{
+			Settlement: date,
+			Maturity:   date.AddDate(m, 0, 0),
+			Frequency:  1,
 			Basis:      "30E360",
 		}
 
 		floatingLeg := bond.Floating{
-			Schedule:   schedule,
+			Schedule:   scheduleFloating,
 			Rate:       rate.Annual(term.Rate(0.5), 2),
 			Redemption: 100.0,
 		}
 
 		fixedLeg := bond.Straight{
-			Schedule:   schedule,
+			Schedule:   scheduleFixed,
 			Coupon:     swapRate[i],
 			Redemption: 100.0,
 		}
@@ -60,7 +66,7 @@ func TestInterestRateSwapValue(t *testing.T) {
 
 		value := swapSecurity.PresentValue(&term)
 
-		if math.Abs(value) > 0.05 {
+		if math.Abs(value) > 0.25 {
 			t.Error("value of interest rate swap is wrong; maturity:", m, "got:", value, "expected: 0.0")
 		}
 	}
