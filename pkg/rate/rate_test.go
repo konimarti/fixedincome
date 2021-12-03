@@ -14,13 +14,13 @@ var (
 )
 
 func TestContinuous(t *testing.T) {
-	if math.Abs(rate.Continuous(annualRate)-ccRate) > 1e-6 {
+	if math.Abs(rate.Continuous(annualRate, 1)-ccRate) > 1e-6 {
 		t.Errorf("conversion from annual to cc rate failed")
 	}
 }
 
 func TestAnnual(t *testing.T) {
-	if math.Abs(rate.Annual(ccRate)-annualRate) > 1e-6 {
+	if math.Abs(rate.Annual(ccRate, 1)-annualRate) > 1e-6 {
 		t.Errorf("conversion from cc to annual rate failed")
 	}
 }

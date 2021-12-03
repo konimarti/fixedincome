@@ -1,142 +1,95 @@
 package bond_test
 
 import (
+	"math"
 	"testing"
+	"time"
+
+	"github.com/konimarti/bonds/pkg/bond"
+	"github.com/konimarti/bonds/pkg/maturity"
+	"github.com/konimarti/bonds/pkg/rate"
+	"github.com/konimarti/bonds/pkg/term"
+)
+
+var (
+	date         = time.Date(2021, 4, 1, 0, 0, 0, 0, time.UTC)
+	floatingBond = bond.Floating{
+		Schedule: maturity.Schedule{
+			Settlement: date,
+			Maturity:   date.AddDate(0, 12, 0),
+			Frequency:  2,
+		},
+		Rate:       2.00,
+		Redemption: 100.0,
+	}
+	floatTwo = bond.Floating{
+		Schedule: maturity.Schedule{
+			Settlement: date.AddDate(0, 3, 0),
+			Maturity:   date.AddDate(0, 12, 0),
+			Frequency:  2,
+		},
+		Rate:       2.00,
+		Redemption: 100.0,
+	}
+	floatingTerm = term.Flat{
+		rate.Continuous(2.0, floatingBond.Schedule.Compounding()),
+		0.0,
+	}
 )
 
 func TestFloatingPricing(t *testing.T) {
-	//
-	// // bond details
-	// // ISIN CH0224396983 (quote per 2021-04-01)
-	// bond := bond.Straight{
-	// 	Schedule: maturity.Schedule{
-	// 		Settlement: time.Date(2021, 4, 1, 0, 0, 0, 0, time.UTC),
-	// 		Maturity:   time.Date(2026, 5, 28, 0, 0, 0, 0, time.UTC),
-	// 		Frequency:  1,
-	// 	},
-	// 	Coupon:     1.25,
-	// 	Redemption: 100.0,
-	// }
-	//
-	// // term structure (parameters per 2021-04-01 for CH govt bonds)
-	// term := term.NelsonSiegelSvensson{
-	// 	-0.266372,
-	// 	-0.471343,
-	// 	5.68789,
-	// 	-5.12324,
-	// 	5.74881,
-	// 	4.14426,
-	// 	0.0, // spread
-	// }
-	//
-	// clean := bond.PresentValue(&term)
-	//
-	// // fmt.Println("dirty bond price=", clean+bond.Accrued()
-	// // fmt.Println("accrued interest=", bond.Accrued())
-	// // fmt.Println("clean bond price=", clean)
-	// // fmt.Println("quoted price    = 109.70")
-	//
-	// expected := 109.70
-	// if math.Abs(clean-expected) > 0.05 {
-	// 	t.Errorf("got %f, expected %f", clean, expected)
-	// }
 
-	t.Error("not implemented yet")
+	clean := floatingBond.PresentValue(&floatingTerm)
+
+	// fmt.Println("maturities=", floatingBond.Schedule.M())
+	// fmt.Println("dirty bond price=", clean+bond.Accrued()
+	// fmt.Println("accrued interest=", floatingBond.Accrued())
+	// fmt.Println("rate=", term.Rate(0.5), term.Rate(1.0))
+	// fmt.Println("clean bond price=", clean)
+
+	expected := 100.00
+	if math.Abs(clean-expected) > 0.01 {
+		t.Errorf("got %f, expected %f", clean, expected)
+	}
+
 }
 
 func TestFloating_AccruedInterest(t *testing.T) {
-
-	// testData := []struct {
-	// 	Quote     time.Time
-	// 	Maturity  time.Time
-	// 	Frequency int
-	// 	Expected  float64
-	// }{
-	// 	{
-	// 		Quote:     time.Date(2021, 4, 17, 0, 0, 0, 0, time.UTC),
-	// 		Maturity:  time.Date(2026, 05, 28, 0, 0, 0, 0, time.UTC),
-	// 		Frequency: 1,
-	// 		Expected:  1.11,
-	// 	},
-	// 	{
-	// 		Quote:     time.Date(2021, 4, 17, 0, 0, 0, 0, time.UTC),
-	// 		Maturity:  time.Date(2026, 05, 28, 0, 0, 0, 0, time.UTC),
-	// 		Frequency: 2,
-	// 		Expected:  0.48,
-	// 	},
-	// }
-	//
-	// for nr, test := range testData {
-	//
-	// 	bond := bond.Straight{
-	// 		Schedule: maturity.Schedule{
-	// 			Settlement: test.Quote,
-	// 			Maturity:   test.Maturity,
-	// 			Frequency:  test.Frequency,
-	// 		},
-	// 		Redemption: 100.0,
-	// 		Coupon:     1.25,
-	// 	}
-	//
-	// 	accrued := math.Round(bond.Accrued()*100.0) / 100.0
-	// 	if math.Abs(accrued-test.Expected) > 0.001 {
-	// 		t.Errorf("test nr %d, got %f, expected %f", nr, accrued, test.Expected)
-	// 	}
-	//
-	// }
-	t.Error("not implemented yet")
+	accrued := floatTwo.Accrued()
+	expected := 0.5
+	if math.Abs(accrued-expected) > 0.001 {
+		t.Errorf("got %f, expected %f", accrued, expected)
+	}
 }
 
 func TestFloating_DurationConvexity(t *testing.T) {
 
-	// testData := []struct {
-	// 	Quote             time.Time
-	// 	Maturity          time.Time
-	// 	Coupon            float64
-	// 	Frequency         int
-	// 	ExpectedDuration  float64
-	// 	ExpectedConvexity float64
-	// }{
-	// 	{
-	// 		Quote:             time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
-	// 		Maturity:          time.Date(2031, 1, 1, 0, 0, 0, 0, time.UTC),
-	// 		Coupon:            0.0,
-	// 		Frequency:         1,
-	// 		ExpectedDuration:  -10.0,
-	// 		ExpectedConvexity: 100.0,
-	// 	},
-	// }
-	//
-	// term := term.NelsonSiegelSvensson{
-	// 	-0.266372,
-	// 	-0.471343,
-	// 	5.68789,
-	// 	-5.12324,
-	// 	5.74881,
-	// 	4.14426,
-	// 	0.0, // spread
-	// }
-	//
-	// for nr, test := range testData {
-	//
-	// 	bond := bond.Straight{
-	// 		Schedule: maturity.Schedule{
-	// 			Settlement: test.Quote,
-	// 			Maturity:   test.Maturity,
-	// 			Frequency:  test.Frequency,
-	// 		},
-	// 		Redemption: 100.0,
-	// 		Coupon:     test.Coupon,
-	// 	}
-	//
-	// 	duration := bond.Duration(&term)
-	// 	if math.Abs(duration-test.ExpectedDuration) > 0.01 {
-	// 		t.Errorf("test nr %d, got %f, expected %f", nr, duration, test.ExpectedDuration)
-	// 	}
-	// 	convex := bond.Convexity(&term)
-	// 	if math.Abs(convex-test.ExpectedConvexity) > 0.1 {
-	// 		t.Errorf("test nr %d, got %f, expected %f", nr, convex, test.ExpectedConvexity)
-	// 	}
-	// }
-	t.Error("not implemented yet")
+	testData := []struct {
+		Floating          bond.Floating
+		ExpectedDuration  float64
+		ExpectedConvexity float64
+	}{
+		{
+			Floating:          floatingBond,
+			ExpectedDuration:  -0.5,
+			ExpectedConvexity: 0.25,
+		},
+		{
+			Floating:          floatTwo,
+			ExpectedDuration:  -0.25,
+			ExpectedConvexity: 0.06,
+		},
+	}
+
+	for nr, test := range testData {
+
+		duration := test.Floating.Duration(&floatingTerm)
+		if math.Abs(duration-test.ExpectedDuration) > 0.01 {
+			t.Errorf("test nr %d, duration failed, got %f, expected %f", nr, duration, test.ExpectedDuration)
+		}
+		convex := test.Floating.Convexity(&floatingTerm)
+		if math.Abs(convex-test.ExpectedConvexity) > 0.01 {
+			t.Errorf("test nr %d, convexity failed, got %f, expected %f", nr, convex, test.ExpectedConvexity)
+		}
+	}
 }

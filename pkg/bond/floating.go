@@ -8,8 +8,8 @@ import (
 // Floating represents a floating-rate bond
 type Floating struct {
 	Schedule maturity.Schedule
-	// Rate is the current rate in percent which is known today
-	// e.g. for semi-annually compounding bonds, rate would be r_2(0)
+	// Rate is the current rate in percent for next coupon payment
+	// which is known today
 	Rate       float64
 	Redemption float64
 }
@@ -27,7 +27,7 @@ func (f *Floating) PresentValue(ts term.Structure) float64 {
 	n := f.Schedule.Compounding()
 
 	// discount face value at next reset date
-	pv += (f.Redemption + f.Rate/float64(n)) * ts.Z(maturities[0])
+	pv += (f.Redemption + f.Rate/float64(n)) * ts.Z(maturities[len(maturities)-1])
 
 	return pv - f.Accrued()
 }
@@ -50,7 +50,7 @@ func (f *Floating) Duration(ts term.Structure) float64 {
 	}
 
 	// discount redemption value
-	years := maturities[0]
+	years := maturities[len(maturities)-1]
 	duration += years * (f.Redemption + f.Rate/float64(n)) * ts.Z(years)
 
 	return -duration / p
@@ -69,7 +69,7 @@ func (f *Floating) Convexity(ts term.Structure) float64 {
 	}
 
 	// discount redemption value
-	years := maturities[0]
+	years := maturities[len(maturities)-1]
 	convex += years * years * (f.Redemption + f.Rate/float64(n)) * ts.Z(years)
 
 	return convex / p
