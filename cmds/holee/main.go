@@ -118,8 +118,8 @@ func main() {
 	}
 	w.WriteAll(output) // calls Flush internally
 
-	// Monte Carlo pricing with the continuous-time Ho-Lee interest rate model
-	// Pricing of Zero Bond with maturity t=4.0
+	// Monte Carlo pricing with the continuous-time Ho-Lee interest rate model:
+	// Zero Bond
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	t := 10.0
 	n = int(t / dt)
