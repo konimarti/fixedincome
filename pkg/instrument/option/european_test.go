@@ -91,3 +91,55 @@ func TestEuropeanPutOption(t *testing.T) {
 		t.Errorf("pricing of European put failed; Got %v, Expected %v", value, expected)
 	}
 }
+
+func TestGreeks(t *testing.T) {
+
+	testData := []struct {
+		Type          int
+		ExpectedDelta float64
+		ExpectedGamma float64
+		ExpectedRho   float64
+		ExpectedVega  float64
+	}{
+		{
+			Type:          option.Call,
+			ExpectedDelta: 0.7023,
+			ExpectedGamma: 0.0074,
+			ExpectedRho:   104.2505,
+			ExpectedVega:  53.8985,
+		},
+		{
+			Type:          option.Put,
+			ExpectedDelta: -0.2977,
+			ExpectedGamma: 0.0074,
+			ExpectedRho:   -87.9074,
+			ExpectedVega:  53.8985,
+		},
+	}
+
+	tolerance := 0.0001
+
+	for _, test := range testData {
+		opt := testOption
+		opt.Type = test.Type
+
+		delta := opt.Delta(&ts)
+		if math.Abs(delta-test.ExpectedDelta) > tolerance {
+			t.Errorf("delta is not correct; Got %v, Expected %v", delta, test.ExpectedDelta)
+		}
+
+		gamma := opt.Gamma(&ts)
+		if math.Abs(gamma-test.ExpectedGamma) > tolerance {
+			t.Errorf("gamma is not correct; Got %v, Expected %v", gamma, test.ExpectedGamma)
+		}
+		rho := opt.Rho(&ts)
+		if math.Abs(rho-test.ExpectedRho) > tolerance {
+			t.Errorf("rho is not correct; Got %v, Expected %v", rho, test.ExpectedRho)
+		}
+		vega := opt.Vega(&ts)
+		if math.Abs(vega-test.ExpectedVega) > tolerance {
+			t.Errorf("vega is not correct; Got %v, Expected %v", vega, test.ExpectedVega)
+		}
+	}
+
+}

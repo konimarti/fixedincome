@@ -45,6 +45,43 @@ func (e *European) SetVola(newVola float64) {
 	e.Vola = newVola
 }
 
+// implement the 'Greeks'
+
+// Delta
+func (e *European) Delta(ts term.Structure) float64 {
+	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
+	sign := 1.0
+	if e.Type == Put {
+		sign = -1.0
+	}
+	return sign * math.Exp(-e.Q*e.T) * N(sign*d1)
+}
+
+// Gamma
+func (e *European) Gamma(ts term.Structure) float64 {
+	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
+	return math.Exp(-e.Q*e.T) * Napostroph(d1) / (e.S * e.Vola * math.Sqrt(e.T))
+}
+
+// Rho
+func (e *European) Rho(ts term.Structure) float64 {
+	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
+	d2 := D2(d1, e.T, e.Vola)
+	sign := 1.0
+	if e.Type == Put {
+		sign = -1.0
+	}
+	return sign * e.K * e.T * math.Exp(-(ts.Rate(e.T)/100.0)*e.T) * N(sign*d2)
+}
+
+// Vega
+func (e *European) Vega(ts term.Structure) float64 {
+	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
+	return math.Exp(-e.Q*e.T) * e.S * math.Sqrt(e.T) * Napostroph(d1)
+}
+
+// helper function for Black Scholes formula
+
 func D1(S, K, T, Q, Vola float64, ts term.Structure) float64 {
 	return (math.Log(S/K) + (ts.Rate(T)/100.0-Q/100.0+math.Pow(Vola, 2.0)/2.0)*T) / (Vola * math.Sqrt(T))
 }
@@ -58,4 +95,8 @@ func N(x float64) float64 {
 		return 1.0 - N(-x)
 	}
 	return 0.5 * math.Erfc(-x/math.Sqrt2)
+}
+
+func Napostroph(x float64) float64 {
+	return math.Exp(-(x*x)/2.0) / (math.SqrtPi * math.Sqrt2)
 }

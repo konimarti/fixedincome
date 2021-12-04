@@ -20,11 +20,11 @@ func TestStock_EuropeanCall(t *testing.T) {
 	}
 
 	// define parameters for ho lee model
-	S := 100.0
+	S := 110.0
 	sigma := 0.3
 	T := 2.0
 	N := 2 * 255
-	K := 120.0
+	K := 100.0
 	r := term.Rate(T) / 100.0
 
 	max := func(a, b float64) float64 {
@@ -49,7 +49,7 @@ func TestStock_EuropeanCall(t *testing.T) {
 	refCallValue := refCall.PresentValue(&term)
 
 	// perform monte carlo simulation with ho lee model
-	engine := mc.New(model, 1e4)
+	engine := mc.New(model, 1e5)
 	err := engine.Run()
 	if err != nil {
 		t.Error(err)
