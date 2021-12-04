@@ -3,10 +3,8 @@ package swap_test
 import (
 	"math"
 	"testing"
-	"time"
 
 	"github.com/konimarti/bonds/pkg/instrument/swap"
-	"github.com/konimarti/bonds/pkg/maturity"
 	"github.com/konimarti/bonds/pkg/term"
 )
 
@@ -66,31 +64,23 @@ func TestSwapInterestRate(t *testing.T) {
 		9.0,
 	}
 
-	maturities := []int{
+	maturities := []float64{
 		3, 4, 5, 6, 7, 8, 9, 10,
 	}
 	expectedSwapRate := []float64{
 		-0.50, -0.42, -0.35, -0.28, -0.21, -0.15, -0.10, -0.06,
 	}
 
-	date := time.Date(2021, 12, 3, 0, 0, 0, 0, time.UTC)
 	for i, m := range maturities {
-		schedule := maturity.Schedule{
-			Settlement: date,
-			Maturity:   date.AddDate(m, 0, 0),
-			Frequency:  2,
-			Basis:      "30E360",
+		tm := []float64{}
+		for k := 0.5; k <= m; k += 0.5 {
+			tm = append(tm, k)
 		}
-
-		swapRate, err := swap.InterestRate(schedule, &term)
+		swapRate, err := swap.InterestRate(tm, 2, &term)
 		if err != nil {
 			t.Error(err)
 		}
-
 		expectedRate := expectedSwapRate[i]
-
-		// fmt.Println("Swaprate", swapRate, "Expected", expectedRate)
-
 		if math.Abs(swapRate-expectedRate) > 0.05 {
 			t.Error("interest swap rate calculation is wrong; maturity:", m, "got:", swapRate, "expected:", expectedRate)
 		}

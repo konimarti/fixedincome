@@ -3,7 +3,6 @@ package swap
 import (
 	"fmt"
 
-	"github.com/konimarti/bonds/pkg/maturity"
 	"github.com/konimarti/bonds/pkg/term"
 )
 
@@ -19,15 +18,14 @@ func FxRate(currentFx float64, cashflows, maturities []float64, tsLong, tsShort 
 }
 
 // InterestRate returns the swap rate, paying a fixed rate and receiving the floating rate
-func InterestRate(schedule maturity.Schedule, ts term.Structure) (float64, error) {
+func InterestRate(maturities []float64, compounding int, ts term.Structure) (float64, error) {
 	var sum float64
-	for _, t := range schedule.M() {
+	for _, t := range maturities {
 		sum += ts.Z(t)
 	}
 	if sum == 0.0 {
 		return 0.0, fmt.Errorf("sum of zero-coupon bonds across maturities is zero")
 	}
-	n := float64(schedule.Compounding())
-	swaprate := n * ((1.0 - ts.Z(schedule.YearsToMaturity())) / sum) * 100.0
+	swaprate := float64(compounding) * ((1.0 - ts.Z(maturities[len(maturities)-1])) / sum) * 100.0
 	return swaprate, nil
 }
