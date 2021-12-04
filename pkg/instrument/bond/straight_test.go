@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/konimarti/bonds/pkg/bond"
+	"github.com/konimarti/bonds/pkg/instrument/bond"
 	"github.com/konimarti/bonds/pkg/maturity"
 	"github.com/konimarti/bonds/pkg/term"
 )

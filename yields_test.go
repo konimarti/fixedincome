@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/konimarti/bonds"
-	"github.com/konimarti/bonds/pkg/bond"
+	"github.com/konimarti/bonds/pkg/instrument/bond"
+	"github.com/konimarti/bonds/pkg/instrument/option"
 	"github.com/konimarti/bonds/pkg/maturity"
-	"github.com/konimarti/bonds/pkg/option"
 	"github.com/konimarti/bonds/pkg/term"
 )
 

@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/konimarti/bonds/pkg/instrument/option"
 	"github.com/konimarti/bonds/pkg/mc"
 	"github.com/konimarti/bonds/pkg/mc/model/stock"
-	"github.com/konimarti/bonds/pkg/option"
 	"github.com/konimarti/bonds/pkg/term"
 )
 

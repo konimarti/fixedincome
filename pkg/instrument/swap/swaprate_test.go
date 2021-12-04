@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/konimarti/bonds/pkg/instrument/swap"
 	"github.com/konimarti/bonds/pkg/maturity"
-	"github.com/konimarti/bonds/pkg/swap"
 	"github.com/konimarti/bonds/pkg/term"
 )
 

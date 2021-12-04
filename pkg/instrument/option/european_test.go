@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/option"
+	"github.com/konimarti/bonds/pkg/instrument/option"
 	"github.com/konimarti/bonds/pkg/term"
 )
 
