@@ -68,7 +68,7 @@ func TestD2(t *testing.T) {
 	}
 }
 
-func TestEuropeanCallOption(t *testing.T) {
+func TestEuropean_PresentValue1(t *testing.T) {
 	call := testOption
 	call.Type = option.Call
 
@@ -80,7 +80,7 @@ func TestEuropeanCallOption(t *testing.T) {
 	}
 }
 
-func TestEuropeanPutOption(t *testing.T) {
+func TestEuropean_PresentValue2(t *testing.T) {
 	put := testOption
 	put.Type = option.Put
 
@@ -92,7 +92,7 @@ func TestEuropeanPutOption(t *testing.T) {
 	}
 }
 
-func TestGreeks(t *testing.T) {
+func TestEuropean_Greeks(t *testing.T) {
 
 	testData := []struct {
 		Type          int

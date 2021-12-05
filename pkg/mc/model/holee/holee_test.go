@@ -10,7 +10,7 @@ import (
 	"github.com/konimarti/bonds/pkg/term"
 )
 
-func TestHoLeeModel_Valuing_ZeroBonds(t *testing.T) {
+func TestHoLee(t *testing.T) {
 
 	// define term structure for model calibration
 	term := term.NelsonSiegelSvensson{

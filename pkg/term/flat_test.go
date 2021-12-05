@@ -7,7 +7,7 @@ import (
 	"github.com/konimarti/bonds/pkg/term"
 )
 
-func TestFlatTermStructure(t *testing.T) {
+func TestFlat(t *testing.T) {
 
 	rate := 1.25
 	spread := 10.0

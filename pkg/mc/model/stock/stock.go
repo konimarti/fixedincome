@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Stock implements the log-normal simulation for the Monte Carlo engine
 type Stock struct {
 	// R is annual return until maturity
 	R float64
@@ -23,6 +24,7 @@ type Stock struct {
 	Payoff func([]float64) float64
 }
 
+// New creates a new Stock model for simulation
 func New(r, s0, sigma, t float64, n int, payoff func([]float64) float64) *Stock {
 	s := &Stock{
 		R:      r,
@@ -36,6 +38,7 @@ func New(r, s0, sigma, t float64, n int, payoff func([]float64) float64) *Stock 
 	return s
 }
 
+// Measurement implements the Monte Carlo model interface
 func (s *Stock) Measurement() float64 {
 	n := s.N
 	dt := s.T / float64(n)

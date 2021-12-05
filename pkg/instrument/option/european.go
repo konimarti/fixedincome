@@ -41,6 +41,7 @@ func (e *European) PresentValue(ts term.Structure) float64 {
 	return value
 }
 
+// SetVola sets the volatility (needed for the calculation of the implied volatility)
 func (e *European) SetVola(newVola float64) {
 	e.Vola = newVola
 }
@@ -82,14 +83,17 @@ func (e *European) Vega(ts term.Structure) float64 {
 
 // helper function for Black Scholes formula
 
+// D1
 func D1(S, K, T, Q, Vola float64, ts term.Structure) float64 {
 	return (math.Log(S/K) + (ts.Rate(T)/100.0-Q/100.0+math.Pow(Vola, 2.0)/2.0)*T) / (Vola * math.Sqrt(T))
 }
 
+// D2
 func D2(d1, T, Vola float64) float64 {
 	return d1 - Vola*math.Sqrt(T)
 }
 
+// N
 func N(x float64) float64 {
 	if x < 0 {
 		return 1.0 - N(-x)
@@ -97,6 +101,7 @@ func N(x float64) float64 {
 	return 0.5 * math.Erfc(-x/math.Sqrt2)
 }
 
+// Napostroph
 func Napostroph(x float64) float64 {
 	return math.Exp(-(x*x)/2.0) / (math.SqrtPi * math.Sqrt2)
 }

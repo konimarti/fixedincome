@@ -37,7 +37,7 @@ var (
 	}
 )
 
-func TestFloatingPricing(t *testing.T) {
+func TestFloating_PresentValue(t *testing.T) {
 
 	testData := []struct {
 		Floating bond.Floating
@@ -71,7 +71,7 @@ func TestFloatingPricing(t *testing.T) {
 
 }
 
-func TestFloating_AccruedInterest(t *testing.T) {
+func TestFloating_Accrued(t *testing.T) {
 	accrued := floatTwo.Accrued()
 	expected := 0.5
 	if math.Abs(accrued-expected) > 0.001 {

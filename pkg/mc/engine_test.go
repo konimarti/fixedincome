@@ -25,7 +25,7 @@ func (p pi) Measurement() float64 {
 	return 0.0
 }
 
-func TestMonteCarloEngine_PI(t *testing.T) {
+func TestEngine(t *testing.T) {
 	engine := mc.New(
 		NewPi(),
 		1e6,

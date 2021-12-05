@@ -8,9 +8,7 @@ import (
 	"github.com/konimarti/bonds/pkg/term"
 )
 
-type Info struct {
-}
-
+// HoLee implements the Ho-Lee interest rate model
 type HoLee struct {
 	// R0 is the initial rate (known today)
 	R0 float64
@@ -28,6 +26,7 @@ type HoLee struct {
 	Payoff func([]float64) float64
 }
 
+// New creates a new Ho-Lee model
 func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) float64) *HoLee {
 	hl := &HoLee{
 		R0:     ts.Rate(t / float64(n)),
@@ -42,6 +41,7 @@ func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) floa
 	return hl
 }
 
+// Calibrate calculates the parameters of the Ho-Lee model (theta's) to match the current yield curve
 func Calibrate(hl *HoLee, ts term.Structure) error {
 	n := hl.N
 	dt := hl.T / float64(n)
@@ -63,6 +63,7 @@ func Calibrate(hl *HoLee, ts term.Structure) error {
 	return nil
 }
 
+// Measurement implements the model interface for the Monte Carlo engine
 func (hl *HoLee) Measurement() float64 {
 	n := hl.N
 	dt := hl.T / float64(n)

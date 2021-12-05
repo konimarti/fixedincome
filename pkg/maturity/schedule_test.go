@@ -8,7 +8,7 @@ import (
 	"github.com/konimarti/bonds/pkg/maturity"
 )
 
-func TestMaturities(t *testing.T) {
+func TestSchedule(t *testing.T) {
 
 	testData := []struct {
 		Quote             time.Time
@@ -92,7 +92,7 @@ func TestMaturities(t *testing.T) {
 	}
 }
 
-func TestMaturitiesDayCountFraction(t *testing.T) {
+func TestSchedule_DayCountFraction(t *testing.T) {
 
 	testData := []struct {
 		Quote     time.Time

@@ -17,7 +17,8 @@ func FxRate(currentFx float64, cashflows, maturities []float64, tsLong, tsShort 
 	return currentFx * short / long, nil
 }
 
-// InterestRate returns the swap rate, paying a fixed rate and receiving the floating rate
+// InterestRate returns the swap rate. The swap rate c is given by the number that makes
+// the value of the swap V(0;c,T) equal to zero at initiation.
 func InterestRate(maturities []float64, compounding int, ts term.Structure) (float64, error) {
 	var sum float64
 	for _, t := range maturities {

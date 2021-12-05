@@ -8,7 +8,7 @@ import (
 	"github.com/konimarti/bonds/pkg/term"
 )
 
-func TestSwapFxRate(t *testing.T) {
+func TestFxRate(t *testing.T) {
 	// Example from John Heaton - FinanciaFinancial Instruments class at Chicago Booth, 2014
 	// Teaching Notes 2, page 49
 	//
@@ -47,7 +47,7 @@ func TestSwapFxRate(t *testing.T) {
 
 }
 
-func TestSwapInterestRate(t *testing.T) {
+func TestInterestRate(t *testing.T) {
 
 	// calculating 5-year semi-annual CHF Swap Rate
 	// IRS CHF 5Y (CH0002113865)

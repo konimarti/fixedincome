@@ -12,10 +12,12 @@ const (
 	ResultsAvailable
 )
 
+// Model specifies the interface for using the Monte Carlo engine
 type Model interface {
 	Measurement() float64
 }
 
+// Engine implements the Monte Carlo simulation
 type Engine struct {
 	Model     Model
 	Nsim      int
@@ -23,6 +25,7 @@ type Engine struct {
 	Status    int
 }
 
+// New creates a Monte Carlo simulation engine for the given model
 func New(m Model, nsim int) *Engine {
 	e := Engine{
 		Model:     m,
@@ -33,6 +36,7 @@ func New(m Model, nsim int) *Engine {
 	return &e
 }
 
+// Run runs the Monte Carlo simulation
 func (e *Engine) Run() error {
 	if e.Status != Initialized {
 		return fmt.Errorf("Monte Carlo engine not initialized")
@@ -45,7 +49,7 @@ func (e *Engine) Run() error {
 	return nil
 }
 
-// Estimate returns the estimate of the simulation
+// Estimate returns the estimate of the simulation (average over all simulations)
 func (e *Engine) Estimate() (float64, error) {
 	if e.Status != ResultsAvailable {
 		return 0.0, fmt.Errorf("no results available from Monte Carlo simulation")
@@ -57,7 +61,7 @@ func (e *Engine) Estimate() (float64, error) {
 	return value / float64(len(e.Estimates)), nil
 }
 
-// StdError returns the standard error of the MC simulation
+// StdError returns the standard error of the simulations
 func (e *Engine) StdError() (float64, error) {
 	if e.Status != ResultsAvailable {
 		return 0.0, fmt.Errorf("no results available from Monte Carlo simulation")

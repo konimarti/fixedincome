@@ -10,7 +10,7 @@ import (
 	"github.com/konimarti/bonds/pkg/term"
 )
 
-func TestBondsPricing(t *testing.T) {
+func TestStraight_PresentValue(t *testing.T) {
 
 	// bond details
 	// ISIN CH0224396983 (quote per 2021-04-01)
@@ -48,7 +48,7 @@ func TestBondsPricing(t *testing.T) {
 	}
 }
 
-func TestAccruedInterest(t *testing.T) {
+func TestStraight_Accrued(t *testing.T) {
 
 	testData := []struct {
 		Quote     time.Time
@@ -90,7 +90,7 @@ func TestAccruedInterest(t *testing.T) {
 	}
 }
 
-func TestDurationConvexity(t *testing.T) {
+func TestStraight_DurationConvexity(t *testing.T) {
 
 	testData := []struct {
 		Quote             time.Time
