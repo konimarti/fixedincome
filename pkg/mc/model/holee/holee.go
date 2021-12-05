@@ -27,7 +27,7 @@ type HoLee struct {
 }
 
 // New creates a new Ho-Lee model
-func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) float64) *HoLee {
+func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) float64) (*HoLee, error) {
 	hl := &HoLee{
 		R0:     ts.Rate(t / float64(n)),
 		Sigma:  sigma,
@@ -37,8 +37,8 @@ func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) floa
 		Rng:    rand.New(rand.NewSource(time.Now().UnixNano())),
 		Payoff: payoff,
 	}
-	Calibrate(hl, ts)
-	return hl
+	err := Calibrate(hl, ts)
+	return hl, err
 }
 
 // Calibrate calculates the parameters of the Ho-Lee model (theta's) to match the current yield curve
