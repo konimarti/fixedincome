@@ -1,84 +1,30 @@
 # Valuation of Fixed Income Securities
 
-[![License](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/konimarti/bonds/blob/master/LICENSE)
-[![GoDoc](https://godoc.org/github.com/konimarti/observer?status.svg)](https://godoc.org/github.com/konimarti/bonds)
-[![goreportcard](https://goreportcard.com/badge/github.com/konimarti/observer)](https://goreportcard.com/report/github.com/konimarti/bonds)
+[![License](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/konimarti/fixedincome/blob/master/LICENSE)
+[![GoDoc](https://godoc.org/github.com/konimarti/observer?status.svg)](https://godoc.org/github.com/konimarti/fixedincome)
+[![goreportcard](https://goreportcard.com/badge/github.com/konimarti/observer)](https://goreportcard.com/report/github.com/konimarti/fixedincome)
 
-Valuation of fixed income securities with a spot-rate term structure based on the Nelson-Siegel-Svensson method and static (zero-volatility) spreads.
+Valuation of fixed income securities with a spot-rate term structure or continuous-time interest-rate models.
+This package can handle and optimize Nelson-Siegel-Svensson or cubic splines term structures from a list of bonds.
+Monte Carlo simulations can be used to price exotic securities with an interest rate model. Currently, the Ho-Lee and Vasicek models are implemented.
 
-`go get github.com/konimarti/bonds`
+Financial instruments covered:
 
-## Usage of bonds-cli
+- Fixed-coupon and floating rate bonds
+- Foward contracts and sorward rate agreeements
+- Interest rate swaps
+- European options (with Black-Scholes)
+- European, Asian, American options with Monte Carlo
+- Ho-Lee and Vasicek interest rate models
 
-- `bonds-cli` is a command-line tool to value fixed income securities
+`go get github.com/konimarti/fixedincome`
 
-  - Install the app: `go install github.com/konimarti/bonds/cmds/bonds-cli`
+## Apps
 
-  - Create a file with the parameters of the Nelson-Siegel-Svensson model in a JSON file, e.g. term.json:
-
-    ```
-    {
-    "b0": -0.266372,
-    "b1": -0.471343,
-    "b2": 5.68789,
-    "b3": -5.12324,
-    "t1": 5.74881,
-    "t2": 4.14426
-    }
-    ```
-
-  - Run the application and provide the details of the bond to be valued:
-
-    ```
-    $ bonds-cli -coupon 1.25 -n 2 -settlement 2021-04-17 -maturity 2026-05-28 -quote 109.64
-    ```
-
-  - This produces the following output:
-    ```
-    Settlement Date  : 2021-04-17
-    Maturity Date    : 2026-05-28    
-    Years to Maturity: 5.11 years
-    Modified duration: 4.95
-    
-    Coupon : 1.25
-    Frequency : 2
-    Day Convention : 30E360
-    
-    Spread : 0.00
-    
-    Dirty Price           	110.11
-    [-] Accrued Interest 	0.48
-    [=] Clean Price 		109.63
-    
-    Yields for the quoted price:
-    	Price 109.64
-	Yield-to-Maturity -0.60 %
-	Implied spread -0.2 bps
-    ```
-   
-- The following options are implemented in `bonds-cli`:
-
-```
-Usage of bonds-cli:
-  -coupon float
-    	coupon in percent of par value
-  -daycount string
-    	day count convention for accured interest, available: BONDBASIS, ACTACT, 30E360, EUROBOND (default "30E360")
-  -f string
-    	json file containing the parameters for the Nelson-Siegel-Svensson term structure (default "term.json")
-  -maturity string
-    	maturity date of bond (default "2022-04-21")
-  -n int
-    	compounding frequency per year (default 1)
-  -quote float
-    	quoted bond price at settlement date
-  -redemption float
-    	redemption value of bond at maturity (default 100)
-  -settlement string
-    	valuation date / settlement date (default "2021-04-21")
-  -spread float
-    	Static (zero-volatility) spread in basepoints for valuing risky bonds
-```
+- `termfit` fits a spot-rate curve to a set of bonds given their quoted prices and maturity dates.
+- `bonds-cli` can be used to value a simple straight fixed-coupon bond
+- `swaprate-cli` provides the swap rates for a set of maturities for the given spot-rate curve
+- `option-cli` is pricing plain vanilla European call or put options and calculates all the 'Greeks'
 
 ## Nelson-Siegel-Svensson parameters
 
@@ -88,7 +34,9 @@ Many central banks offer daily updates of the fitted parameters for the Nelson-S
 
 - European Central Bank (ECB) for [EUR risk-free spot rates](https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_area_yield_curves/html/index.en.html)
 
-## Code
+## Code example for a straight bond
+
+- Valuation of more exoctic securities are given in the example folder
 
 ```go
 	// define straight bond

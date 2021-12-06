@@ -19,17 +19,16 @@ var (
 func main() {
 	flag.Parse()
 
-	// read term structure parameters and create NSS model
-	nssData, err := ioutil.ReadFile(*fileFlag)
+	// read term structure parameters
+	termData, err := ioutil.ReadFile(*fileFlag)
 	if err != nil {
 		log.Println(err)
 	}
 
-	var ts term.NelsonSiegelSvensson
-	err = json.Unmarshal(nssData, &ts)
+	ts, err := term.Parse(termData)
 	if err != nil {
 		log.Println(err)
-		log.Println("no file given for term structure parameters. Use template for Nelson-Siegel-Svensson:")
+		log.Println("Use the following template for the Nelson-Siegel-Svensson yield curve:")
 		data, err := json.MarshalIndent(term.NelsonSiegelSvensson{}, " ", "")
 		if err != nil {
 			panic(err)
@@ -48,7 +47,7 @@ func main() {
 		for k := 0.5; k <= t; k += 0.5 {
 			m = append(m, k)
 		}
-		swaprate, err := swap.InterestRate(m, 2, &ts)
+		swaprate, err := swap.InterestRate(m, 2, ts)
 		if err != nil {
 			fmt.Println(err)
 		}
