@@ -144,7 +144,7 @@ func main() {
 	xtmap := make(map[float64]bool)
 	for _, bond := range bonds {
 		for _, t := range bond.Schedule.M() {
-			xtmap[math.Round(t*1.0)/1.0] = true
+			xtmap[math.Round(t*10.0)/10.0] = true
 		}
 	}
 	for key, _ := range xtmap {
@@ -189,6 +189,8 @@ func main() {
 	// print out price comparison
 	termSpline := term.NewSpline(xt, result.X, 0.0)
 	// fmt.Println("Cubic spline term structure:")
+	fmt.Println("x=", xt)
+	fmt.Println("y=", result.X)
 	// printTerm(termSpline)
 
 	// *******************************************************************
