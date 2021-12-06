@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -101,7 +102,7 @@ func main() {
 	}
 
 	x := []float64{-0.352323, -0.392947, 5.34703, -3.93181, 4.8696, 3.87489}
-	fmt.Printf("start.X: %0.4g\n", x)
+	// fmt.Printf("start.X: %0.4g\n", x)
 	termStart := term.NelsonSiegelSvensson{
 		x[0],
 		x[1],
@@ -119,10 +120,7 @@ func main() {
 	if err = result.Status.Err(); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("result.Status: %v\n", result.Status)
-	fmt.Printf("result.X: %0.4g\n", result.X)
-	fmt.Printf("result.F: %0.4g\n", result.F)
-	fmt.Printf("result.Stats.FuncEvaluations: %d\n", result.Stats.FuncEvaluations)
+	printResult(result)
 
 	// print out price comparison
 	termNss := term.NelsonSiegelSvensson{
@@ -134,6 +132,8 @@ func main() {
 		result.X[5],
 		0.0,
 	}
+	fmt.Println("Nelson-Siegel-Svensson term structure:")
+	printTerm(&termNss)
 
 	// *******************************************************************
 	// optimized Spline
@@ -175,7 +175,7 @@ func main() {
 	for i, x := range xt {
 		y[i] = termStart.Rate(x)
 	}
-	fmt.Printf("start.X: %0.4g\n", y)
+	// fmt.Printf("start.X: %0.4g\n", y)
 
 	result, err = optimize.Minimize(p, y, nil, nil)
 	if err != nil {
@@ -184,13 +184,12 @@ func main() {
 	if err = result.Status.Err(); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("result.Status: %v\n", result.Status)
-	fmt.Printf("result.X: %0.4g\n", result.X)
-	fmt.Printf("result.F: %0.4g\n", result.F)
-	fmt.Printf("result.Stats.FuncEvaluations: %d\n", result.Stats.FuncEvaluations)
+	printResult(result)
 
 	// print out price comparison
 	termSpline := term.NewSpline(xt, result.X, 0.0)
+	// fmt.Println("Cubic spline term structure:")
+	// printTerm(termSpline)
 
 	// *******************************************************************
 	// print output
@@ -221,4 +220,21 @@ func main() {
 	w := csv.NewWriter(fout)
 	w.WriteAll(output) // calls Flush internally
 
+}
+
+func printResult(result *optimize.Result) {
+	fmt.Println("Optimization results:")
+	fmt.Printf("Status: %v\n", result.Status)
+	fmt.Printf("X     : %0.4g\n", result.X)
+	fmt.Printf("F     : %0.4g\n", result.F)
+	fmt.Printf("Stats.FuncEvaluations: %d\n\n", result.Stats.FuncEvaluations)
+}
+
+func printTerm(ts term.Structure) {
+	text, err := json.MarshalIndent(ts, " ", "")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	fmt.Println(string(text))
 }
