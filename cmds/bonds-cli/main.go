@@ -24,7 +24,7 @@ var (
 	price          = flag.Float64("quote", 0.0, "quoted bond price at settlement date")
 	redemption     = flag.Float64("redemption", 100.0, "redemption value of bond at maturity")
 	spread         = flag.Float64("spread", 0.0, "Static (zero-volatility) spread in basepoints for valuing risky bonds")
-	fileFlag       = flag.String("f", "term.json", "json file containing the parameters for the Nelson-Siegel-Svensson term structure")
+	fileFlag       = flag.String("f", "term.json", "json file containing the parameters for term structure")
 	option         = strings.Join([]string{"day count convention for accured interest, available: ", strings.Join(daycount.Implemented(), ", ")}, "")
 	daycountname   = flag.String("daycount", "30E360", option)
 )
@@ -33,23 +33,21 @@ func main() {
 	flag.Parse()
 
 	// read term structure parameters and create NSS model
-	nssData, err := ioutil.ReadFile(*fileFlag)
+	termData, err := ioutil.ReadFile(*fileFlag)
 	if err != nil {
 		log.Println(err)
 	}
 
-	var nss term.NelsonSiegelSvensson
-	err = json.Unmarshal(nssData, &nss)
+	ts, err := term.Parse(termData)
 	if err != nil {
 		log.Println(err)
-		log.Println("no file given for term structure parameters. Use template for Nelson-Siegel-Svensson:")
+		log.Println("no file given for term structure parameters. Use template for e.g. Nelson-Siegel-Svensson:")
 		data, err := json.MarshalIndent(term.NelsonSiegelSvensson{}, " ", "")
 		if err != nil {
 			panic(err)
 		}
 		fmt.Println(string(data))
 		return
-
 	}
 
 	// parse quote and maturity dates
@@ -75,10 +73,10 @@ func main() {
 	}
 
 	// set spread
-	nss.SetSpread(*spread)
+	ts.SetSpread(*spread)
 
 	// price the bond
-	dirty := bond.PresentValue(&nss)
+	dirty := bond.PresentValue(ts)
 	clean := dirty - bond.Accrued()
 
 	fmt.Println("")
@@ -86,7 +84,7 @@ func main() {
 	fmt.Printf("Maturity Date    : %s\n", maturityDate.Format("2006-01-02"))
 	fmt.Println("")
 	fmt.Printf("Years to Maturity: %.2f years\n", bond.YearsToMaturity())
-	fmt.Printf("Modified duration: %.2f\n", bond.Duration(&nss))
+	fmt.Printf("Modified duration: %.2f\n", bond.Duration(ts))
 	fmt.Println("")
 	fmt.Printf("Coupon           : %.2f\n", *coupon)
 	fmt.Printf("Frequency        : %d\n", *frequency)
@@ -117,7 +115,7 @@ func main() {
 	}
 	fmt.Printf("  Yield-to-Maturity   %10.2f %%\n", irr)
 
-	spread, err := bonds.Spread(bondPrice, &bond, &nss)
+	spread, err := bonds.Spread(bondPrice, &bond, ts)
 	if err != nil {
 		log.Fatal(err)
 	}

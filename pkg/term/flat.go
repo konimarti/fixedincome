@@ -4,8 +4,8 @@ import "math"
 
 // Flat represents a flat term structure, i.e. constant rate across maturities
 type Flat struct {
-	R      float64
-	Spread float64
+	R      float64 `json:"r"`
+	Spread float64 `json:"spread"`
 }
 
 // SetSpread sets the spread in bps

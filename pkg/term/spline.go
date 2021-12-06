@@ -8,8 +8,8 @@ import (
 
 // Spline represents the term structure as cubic splines
 type Spline struct {
-	Spline gospline.Spline
-	Spread float64
+	Spline gospline.Spline `json:"spline"`
+	Spread float64         `json:"spread"`
 }
 
 // SetSpread sets the spread in bps

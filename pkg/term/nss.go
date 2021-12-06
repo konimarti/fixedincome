@@ -11,7 +11,7 @@ type NelsonSiegelSvensson struct {
 	B3     float64 `json:"b3"`
 	T1     float64 `json:"t1"`
 	T2     float64 `json:"t2"`
-	Spread float64
+	Spread float64 `json:"spread"`
 }
 
 // SetSpread sets spread for the calculation of the discount factors
