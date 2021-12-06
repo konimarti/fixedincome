@@ -29,7 +29,7 @@ func TestSpline(t *testing.T) {
 
 	// create spline term structure
 	spread := 0.0
-	spline := term.NewSpline(maturities, refRate, spread)
+	spline := term.NewSpline(maturities, refZ, spread)
 
 	// test spline approximation: rates
 	sum := 0.0

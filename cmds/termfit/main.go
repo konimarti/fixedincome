@@ -173,7 +173,7 @@ func main() {
 	// use flat estimates
 	y := make([]float64, len(xt))
 	for i, x := range xt {
-		y[i] = termStart.Rate(x)
+		y[i] = termStart.Z(x)
 	}
 	// fmt.Printf("start.X: %0.4g\n", y)
 
