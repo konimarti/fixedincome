@@ -75,10 +75,10 @@ Many central banks offer daily updates of the fitted parameters for the Nelson-S
 	dirtyPrice := value + accrued
 
 	// internal rate of return given a market price
-	irr, _ := bonds.IRR(109.70, straightBond)
+	irr, _ := fixedincome.IRR(109.70, straightBond)
 
 	// implied static spread
-	spread, _ := bonds.Spread(109.70, straightBond, &term)
+	spread, _ := fixedincome.Spread(109.70, straightBond, &term)
 ```
 
 ## Further reading
