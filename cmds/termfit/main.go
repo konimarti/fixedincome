@@ -22,6 +22,7 @@ var (
 	bonds      []bond.Straight
 	prices     []float64
 	file       = flag.String("file", "bonddata.csv", "CSV file for bond data with the following fields: maturity date (format: 02.01.2006), coupon, price")
+	inputFile  = flag.String("input", "", "input term structure (json)")
 	settlement = flag.String("date", "26.11.2021", "date of the bond prices (format: 02.01.2006)")
 )
 
@@ -144,7 +145,7 @@ func main() {
 	xtmap := make(map[float64]bool)
 	for _, bond := range bonds {
 		for _, t := range bond.Schedule.M() {
-			xtmap[math.Round(t*10.0)/10.0] = true
+			xtmap[math.Round(t*2.0)/2.0] = true
 		}
 	}
 	for key, _ := range xtmap {
@@ -156,11 +157,11 @@ func main() {
 		termSpline := term.NewSpline(xt, y, 0.0)
 		sst := 0.0
 		for i, bond := range bonds {
-			t := bond.YearsToMaturity()
-			if t >= 1.5/12.0 {
-				quotedPrice := bond.PresentValue(termSpline) // aka clean price
-				sst += math.Pow(quotedPrice-prices[i], 2.0)
-			}
+			// t := bond.YearsToMaturity()
+			// if t >= 1.5/12.0 {
+			quotedPrice := bond.PresentValue(termSpline) // aka clean price
+			sst += math.Pow(quotedPrice-prices[i], 2.0)
+			// }
 		}
 		return sst
 	}
@@ -209,6 +210,8 @@ func main() {
 			fmt.Sprintf("%v", termSpline.Rate(t)),
 			fmt.Sprintf("%v", quoteNss),
 			fmt.Sprintf("%v", quoteSpline),
+			fmt.Sprintf("%v", termNss.Z(t)),
+			fmt.Sprintf("%v", termSpline.Z(t)),
 		})
 
 	}
