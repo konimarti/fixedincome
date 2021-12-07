@@ -11,7 +11,7 @@ Monte Carlo simulations can be used to price exotic securities with an interest 
 Financial instruments covered:
 
 - Fixed-coupon and floating rate bonds
-- Foward contracts and sorward rate agreeements
+- Foward contracts and forward rate agreeements
 - Interest rate swaps
 - European options (with Black-Scholes)
 - European, Asian, American options with Monte Carlo
