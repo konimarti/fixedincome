@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 func TestNelsonSiegelSvensson(t *testing.T) {

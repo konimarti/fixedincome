@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/rate"
+	"github.com/konimarti/fixedincome/pkg/rate"
 )
 
 var (

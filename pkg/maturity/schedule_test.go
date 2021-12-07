@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/konimarti/bonds/pkg/maturity"
+	"github.com/konimarti/fixedincome/pkg/maturity"
 )
 
 func TestSchedule(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/mc"
-	"github.com/konimarti/bonds/pkg/mc/model/vasicek"
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/mc"
+	"github.com/konimarti/fixedincome/pkg/mc/model/vasicek"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 func TestVasicek(t *testing.T) {

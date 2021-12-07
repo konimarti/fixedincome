@@ -1,8 +1,8 @@
 package swap
 
 import (
-	"github.com/konimarti/bonds/pkg/instrument/bond"
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/instrument/bond"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 // InterestRateSwap implements a plain vanilla fixed-for-floating interest

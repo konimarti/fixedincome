@@ -1,6 +1,6 @@
 package forward
 
-import "github.com/konimarti/bonds/pkg/term"
+import "github.com/konimarti/fixedincome/pkg/term"
 
 // RateAgreement (FRA) is a constract between two counterparties,
 // according to which one counterparty agrees to pay the forward rate

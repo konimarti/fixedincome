@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/mc"
+	"github.com/konimarti/fixedincome/pkg/mc"
 )
 
 type pi struct {

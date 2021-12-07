@@ -1,4 +1,4 @@
-module github.com/konimarti/bonds
+module github.com/konimarti/fixedincome
 
 go 1.16
 

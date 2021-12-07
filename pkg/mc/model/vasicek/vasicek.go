@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/term"
 	"gonum.org/v1/gonum/optimize"
 )
 

@@ -2,7 +2,7 @@ package bonds
 
 import (
 	"github.com/khezen/rootfinding"
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 var (

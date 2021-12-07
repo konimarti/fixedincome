@@ -3,7 +3,7 @@ package swap
 import (
 	"fmt"
 
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 // FxRate returns the swap rate which equals the current exchange rate multiplied

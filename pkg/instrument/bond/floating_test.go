@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/konimarti/bonds/pkg/instrument/bond"
-	"github.com/konimarti/bonds/pkg/maturity"
-	"github.com/konimarti/bonds/pkg/rate"
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/instrument/bond"
+	"github.com/konimarti/fixedincome/pkg/maturity"
+	"github.com/konimarti/fixedincome/pkg/rate"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 var (

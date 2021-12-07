@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 func TestParse(t *testing.T) {

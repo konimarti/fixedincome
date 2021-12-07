@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/instrument/option"
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/instrument/option"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 var (

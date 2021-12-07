@@ -1,8 +1,8 @@
 package bond
 
 import (
-	"github.com/konimarti/bonds/pkg/maturity"
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/maturity"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 // Straight represents a straight-bond fixed income security

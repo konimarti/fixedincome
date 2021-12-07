@@ -12,7 +12,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 var (

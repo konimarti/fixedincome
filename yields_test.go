@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/konimarti/bonds"
-	"github.com/konimarti/bonds/pkg/instrument/bond"
-	"github.com/konimarti/bonds/pkg/instrument/option"
-	"github.com/konimarti/bonds/pkg/maturity"
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome"
+	"github.com/konimarti/fixedincome/pkg/instrument/bond"
+	"github.com/konimarti/fixedincome/pkg/instrument/option"
+	"github.com/konimarti/fixedincome/pkg/maturity"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 func TestYields(t *testing.T) {

@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/konimarti/bonds/pkg/instrument/option"
-	"github.com/konimarti/bonds/pkg/mc"
-	"github.com/konimarti/bonds/pkg/mc/model/stock"
-	"github.com/konimarti/bonds/pkg/term"
+	"github.com/konimarti/fixedincome/pkg/instrument/option"
+	"github.com/konimarti/fixedincome/pkg/mc"
+	"github.com/konimarti/fixedincome/pkg/mc/model/stock"
+	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 func TestStock_EuropeanCall(t *testing.T) {

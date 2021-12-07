@@ -1,6 +1,6 @@
 package bonds
 
-import "github.com/konimarti/bonds/pkg/term"
+import "github.com/konimarti/fixedincome/pkg/term"
 
 type InterestSensitiveSecurity interface {
 	Security
