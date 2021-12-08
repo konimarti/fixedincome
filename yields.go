@@ -1,4 +1,4 @@
-package bonds
+package fixedincome
 
 import (
 	"github.com/khezen/rootfinding"

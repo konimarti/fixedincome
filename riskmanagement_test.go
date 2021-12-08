@@ -1,4 +1,4 @@
-package bonds_test
+package fixedincome_test
 
 import (
 	"math"
@@ -27,7 +27,7 @@ func TestInterestSensitivity(t *testing.T) {
 	ts := term.Flat{2.0, 0.0}
 
 	// calculate sensitivity
-	pvbp := bonds.PVBP(&bond, &ts)
+	pvbp := fixedincome.PVBP(&bond, &ts)
 	// fmt.Println("duration=", bond.Duration(&ts))
 	// fmt.Println("convexity=", bond.Convexity(&ts))
 

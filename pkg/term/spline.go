@@ -30,11 +30,11 @@ func (s *Spline) Z(t float64) float64 {
 	return s.Spline.At(t) * math.Exp(s.Spread*0.0001*t)
 }
 
-// NewSpline returns a new spline term structure where x are the maturities in
-// increasing order with the corresponding continuously compounded rates in y
-func NewSpline(x, y []float64, spread float64) Structure {
+// NewSpline returns a new spline term structure where t are the maturities in
+// increasing order with the corresponding discount factors z
+func NewSpline(t, z []float64, spread float64) Structure {
 	spline := Spline{
-		Spline: gospline.NewCubicSpline(x, y),
+		Spline: gospline.NewCubicSpline(t, z),
 		Spread: spread,
 	}
 	return &spline

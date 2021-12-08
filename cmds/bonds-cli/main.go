@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/konimarti/daycount"
 	"github.com/konimarti/fixedincome"
 	"github.com/konimarti/fixedincome/pkg/instrument/bond"
 	"github.com/konimarti/fixedincome/pkg/maturity"
 	"github.com/konimarti/fixedincome/pkg/term"
-	"github.com/konimarti/daycount"
 )
 
 var (
@@ -109,13 +109,13 @@ func main() {
 	}
 
 	fmt.Printf("  Price               %10.2f\n", bondPrice)
-	irr, err := bonds.Irr(bondPrice, &bond)
+	irr, err := fixedincome.Irr(bondPrice, &bond)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("  Yield-to-Maturity   %10.2f %%\n", irr)
 
-	spread, err := bonds.Spread(bondPrice, &bond, ts)
+	spread, err := fixedincome.Spread(bondPrice, &bond, ts)
 	if err != nil {
 		log.Fatal(err)
 	}

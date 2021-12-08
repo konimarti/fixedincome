@@ -1,4 +1,4 @@
-package bonds_test
+package fixedincome_test
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 func TestYields(t *testing.T) {
 
 	testData := []struct {
-		B              bonds.Security
+		B              fixedincome.Security
 		Quote          float64
 		ExpectedIRR    float64
 		ExpectedSpread float64
@@ -69,7 +69,7 @@ func TestYields(t *testing.T) {
 	for nr, test := range testData {
 
 		// IRR
-		irr, err := bonds.Irr(test.Quote, test.B)
+		irr, err := fixedincome.Irr(test.Quote, test.B)
 		// fmt.Println(irr)
 		if err != nil {
 			fmt.Println(err)
@@ -83,7 +83,7 @@ func TestYields(t *testing.T) {
 		}
 
 		// Z-Spread
-		spread, err := bonds.Spread(test.Quote, test.B, &term)
+		spread, err := fixedincome.Spread(test.Quote, test.B, &term)
 		// fmt.Println(zspread)
 		if err != nil {
 			fmt.Println(err)
@@ -125,7 +125,7 @@ func TestImpliedVola(t *testing.T) {
 
 	for _, test := range tests {
 		testOption.Type = test.OptionType
-		vola, err := bonds.ImpliedVola(test.Price, &testOption, &ts)
+		vola, err := fixedincome.ImpliedVola(test.Price, &testOption, &ts)
 		if err != nil || math.Abs(vola-expected) > 0.0001 {
 			t.Error("Type", test.OptionType, "Got", vola, "Expected", expected)
 		}
