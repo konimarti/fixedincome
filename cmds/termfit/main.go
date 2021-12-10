@@ -159,7 +159,11 @@ func main() {
 	}
 
 	funSpline := func(y []float64) float64 {
-		termSpline := term.NewSpline(xt, y, 0.0)
+		x2 := []float64{0.002739}
+		y2 := []float64{1.0000205}
+		x2 = append(x2, xt...)
+		y2 = append(y2, y...)
+		termSpline := term.NewSpline(x2, y2, 0.0)
 		sst := 0.0
 		for i, bond := range bonds {
 			t := bond.YearsToMaturity()
