@@ -23,6 +23,8 @@ github.com/konimarti/daycount v0.0.0-20210421202638-af7b1ef7aeb5 h1:TLA01yIhiToU
 github.com/konimarti/daycount v0.0.0-20210421202638-af7b1ef7aeb5/go.mod h1:nC25jrhS2dFCelOXroMoev4IE8m47A+RIrsURSgvuUw=
 github.com/konimarti/daycount v0.0.1 h1:ADhVjdU+JpDqMkKQ/qGzGYwCs5nbFjM5VvHVDmLaLXI=
 github.com/konimarti/daycount v0.0.1/go.mod h1:nC25jrhS2dFCelOXroMoev4IE8m47A+RIrsURSgvuUw=
+github.com/konimarti/daycount v0.0.2 h1:FQ9x3vHe/9GnrAYXJ6RnXeMKkwU4Q+zfbzJQ5+3dJKE=
+github.com/konimarti/daycount v0.0.2/go.mod h1:nC25jrhS2dFCelOXroMoev4IE8m47A+RIrsURSgvuUw=
 github.com/phpdave11/gofpdf v1.4.2/go.mod h1:zpO6xFn9yxo3YLyMvW8HcKWVdbNqgIfOOp2dXMnm1mY=
 github.com/phpdave11/gofpdi v1.0.12/go.mod h1:vBmVV0Do6hSBHC8uKUQ71JGW+ZGQq74llk/7bXwjDoI=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
