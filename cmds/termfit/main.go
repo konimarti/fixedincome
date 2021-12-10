@@ -92,7 +92,7 @@ func main() {
 			Redemption: 100.0,
 		}
 		bonds = append(bonds, bondS)
-		prices = append(prices, price)
+		prices = append(prices, price+bondS.Accrued())
 
 	}
 
