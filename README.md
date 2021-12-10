@@ -72,7 +72,7 @@ Many central banks offer daily updates of the fitted parameters for the Nelson-S
 
 	// accrued interest (30/360 day convention) and "dirty" price of bond
 	accrued := straightBond.Accrued()
-	dirtyPrice := value + accrued
+	cleanPrice := value - accrued
 
 	// internal rate of return given a market price
 	irr, _ := fixedincome.IRR(109.70, straightBond)
