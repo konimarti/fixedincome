@@ -22,7 +22,6 @@ var (
 	bonds      []bond.Straight
 	prices     []float64
 	file       = flag.String("file", "bonddata.csv", "CSV file for bond data with the following fields: maturity date (format: 02.01.2006), coupon, price")
-	inputFile  = flag.String("input", "", "input term structure (json)")
 	settlement = flag.String("date", "26.11.2021", "date of the bond prices (format: 02.01.2006)")
 )
 
@@ -142,25 +141,31 @@ func main() {
 
 	// find all maturities in xt for interpolation
 	xt := []float64{}
+	temp := []float64{}
 	xtmap := make(map[float64]bool)
 	for _, bond := range bonds {
 		for _, t := range bond.Schedule.M() {
-			xtmap[math.Round(t*2.0)/2.0] = true
+			xtmap[math.Round(t*100.0)/100.0] = true
 		}
 	}
+	xtmap[0.5] = true
 	for key, _ := range xtmap {
-		xt = append(xt, key)
+		temp = append(temp, key)
 	}
-	sort.Float64s(xt)
+	sort.Float64s(temp)
+	// select only sqrt(k) time points for splines
+	for i := 0; i < len(temp); i += int(float64(len(temp)) / math.Sqrt(float64(len(bonds)))) {
+		xt = append(xt, temp[i])
+	}
 
 	funSpline := func(y []float64) float64 {
 		termSpline := term.NewSpline(xt, y, 0.0)
 		sst := 0.0
 		for i, bond := range bonds {
-			// t := bond.YearsToMaturity()
+			t := bond.YearsToMaturity()
 			// if t >= 1.5/12.0 {
 			quotedPrice := bond.PresentValue(termSpline) // aka clean price
-			sst += math.Pow(quotedPrice-prices[i], 2.0)
+			sst += math.Pow(quotedPrice-prices[i], 2.0) / (t * t)
 			// }
 		}
 		return sst
@@ -219,7 +224,7 @@ func main() {
 	// write to comparison to result.csv
 	fout, err := os.Create("result.csv")
 	if err != nil {
-		log.Fatal("Unable to read input file: result.csv", err)
+		log.Fatal("Unable to read output file: result.csv", err)
 	}
 	defer fout.Close()
 	w := csv.NewWriter(fout)
