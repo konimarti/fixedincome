@@ -68,7 +68,7 @@ func TestSchedule(t *testing.T) {
 		}
 
 		maturities := m.M()
-		tolerance := 0.005
+		tolerance := 0.001
 
 		if len(maturities) != len(test.Expected) {
 			t.Errorf("length of maturities does not match")

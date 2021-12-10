@@ -7,7 +7,7 @@ import (
 
 // Straight represents a straight-bond fixed income security
 type Straight struct {
-	Schedule   maturity.Schedule
+	maturity.Schedule
 	Coupon     float64
 	Redemption float64
 }
@@ -33,12 +33,7 @@ func (b *Straight) PresentValue(ts term.Structure) float64 {
 	// discount redemption value
 	dcf += b.Redemption * ts.Z(b.YearsToMaturity())
 
-	return dcf - b.Accrued()
-}
-
-// YearsToMaturity calculates the number of years until maturity
-func (b *Straight) YearsToMaturity() float64 {
-	return b.Schedule.YearsToMaturity()
+	return dcf
 }
 
 // Duration calculates the duration of the bond

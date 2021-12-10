@@ -7,7 +7,7 @@ import (
 
 // Floating represents a floating-rate bond
 type Floating struct {
-	Schedule maturity.Schedule
+	maturity.Schedule
 	// Rate is the current rate in percent for next coupon payment
 	// which is known today
 	Rate       float64
@@ -19,7 +19,7 @@ func (f *Floating) Accrued() float64 {
 	return f.Rate * f.Schedule.DayCountFraction()
 }
 
-// PresentValue returns the "clean" bond prices (for the "dirty" price just add the accrued interest)
+// PresentValue returns the "dirty" bond prices (for the "clean" price just subtract the accrued interest)
 func (f *Floating) PresentValue(ts term.Structure) float64 {
 	pv := 0.0
 
@@ -30,11 +30,6 @@ func (f *Floating) PresentValue(ts term.Structure) float64 {
 	pv += (f.Redemption + f.Rate/float64(n)) * ts.Z(maturities[len(maturities)-1])
 
 	return pv
-}
-
-// YearsToMaturity calculates the number of years until maturity
-func (f *Floating) YearsToMaturity() float64 {
-	return f.Schedule.YearsToMaturity()
 }
 
 // Duration calculates the duration of the floating-rate bond

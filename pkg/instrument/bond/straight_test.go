@@ -35,7 +35,8 @@ func TestStraight_PresentValue(t *testing.T) {
 		0.0, // spread
 	}
 
-	clean := bond.PresentValue(&term)
+	dirty := bond.PresentValue(&term)
+	clean := dirty - bond.Accrued()
 
 	// fmt.Println("dirty bond price=", clean+bond.Accrued()
 	// fmt.Println("accrued interest=", bond.Accrued())

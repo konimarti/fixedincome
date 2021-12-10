@@ -108,14 +108,15 @@ func main() {
 		fmt.Println("Yields for the calculated clean price:")
 	}
 
-	fmt.Printf("  Price               %10.2f\n", bondPrice)
-	irr, err := fixedincome.Irr(bondPrice, &bond)
+	fmt.Printf("  Quoted Price        %10.2f\n", bondPrice)
+	fmt.Printf("  Invoice Price       %10.2f\n", bondPrice+bond.Accrued())
+	irr, err := fixedincome.Irr(bondPrice+bond.Accrued(), &bond)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("  Yield-to-Maturity   %10.2f %%\n", irr)
 
-	spread, err := fixedincome.Spread(bondPrice, &bond, ts)
+	spread, err := fixedincome.Spread(bondPrice+bond.Accrued(), &bond, ts)
 	if err != nil {
 		log.Fatal(err)
 	}

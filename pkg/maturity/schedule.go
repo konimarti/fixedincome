@@ -31,20 +31,19 @@ func (m *Schedule) Compounding() int {
 func (m *Schedule) M() []float64 {
 	maturities := []float64{}
 
+	if m.Compounding() > 12 {
+		panic("more than 12 compounding periods not implemented yet")
+	}
 	step := 12 / m.Compounding()
 
 	// walk back from maturity date to quote date
 	quote := m.Settlement
 	for current := m.Maturity; current.Sub(quote) > 0; current = current.AddDate(0, -step, 0) {
-		if m.Basis == "ACTACT" {
-			maturities = append(maturities, DifferenceInYears(quote, current))
-		} else {
-			frac, err := daycount.Fraction(quote, current, time.Time{}, m.Compounding(), m.Basis)
-			if err != nil {
-				panic(err)
-			}
-			maturities = append(maturities, frac)
+		frac, err := daycount.Fraction(quote, current, quote.AddDate(1, 0, 0), m.Basis)
+		if err != nil {
+			panic(err)
 		}
+		maturities = append(maturities, frac)
 	}
 
 	return maturities
@@ -55,16 +54,11 @@ func (m *Schedule) YearsToMaturity() float64 {
 	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
-	if m.Basis == "ACTACT" {
-		return DifferenceInYears(m.Settlement, m.Maturity)
-	} else {
-		frac, err := daycount.Fraction(m.Settlement, m.Maturity, time.Time{}, m.Compounding(), m.Basis)
-		if err != nil {
-			panic(err)
-		}
-		return frac
+	frac, err := daycount.Fraction(m.Settlement, m.Maturity, m.Settlement.AddDate(1, 0, 0), m.Basis)
+	if err != nil {
+		panic(err)
 	}
-
+	return frac
 }
 
 // DayCountFraction returns year fraction since last coupon
@@ -72,23 +66,27 @@ func (m *Schedule) DayCountFraction() float64 {
 	if m.Maturity.Before(m.Settlement) {
 		return 0.0
 	}
-	step := 12 / m.Compounding()
+
 	d1 := m.Maturity
 	d2 := m.Settlement
 	d3 := time.Time{}
 
 	// iterate maturity date backwards until last coupon date before settlement date
+	if m.Compounding() > 12 {
+		panic("more than 12 compounding periods not implemented yet")
+	}
+	step := 12 / m.Compounding()
 	for ; d1.Sub(d2) > 0; d1 = d1.AddDate(0, -step, 0) {
 		d3 = d1
 	}
 
 	// calculate day count fraction
-	frac, err := daycount.Fraction(d1, d2, d3, m.Compounding(), m.Basis)
+	frac, err := daycount.Fraction(d1, d2, d3, m.Basis)
 	if err != nil {
 		panic(err)
 	}
 
-	return frac
+	return frac / float64(m.Compounding())
 }
 
 // Actual difference between two dates in years

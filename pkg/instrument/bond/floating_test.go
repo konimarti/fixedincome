@@ -54,13 +54,7 @@ func TestFloating_PresentValue(t *testing.T) {
 	}
 
 	for i, test := range testData {
-		// fmt.Println("maturities=", floatingBond.Schedule.M())
-		// fmt.Println("dirty bond price=", clean+bond.Accrued()
-		// fmt.Println("accrued interest=", floatingBond.Accrued())
-		// fmt.Println("rate=", term.Rate(0.5), term.Rate(1.0))
-		// fmt.Println("clean bond price=", clean)
-
-		// PresentValue delivers the "dirty" price
+		// PresentValue delivers the "clean" price
 		dirty := test.Floating.PresentValue(&floatingTerm)
 		expected := test.Expected
 		if math.Abs(dirty-expected) > 0.01 {

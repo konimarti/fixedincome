@@ -16,7 +16,7 @@ import (
 func TestYields(t *testing.T) {
 
 	testData := []struct {
-		B              fixedincome.Security
+		B              *bond.Straight
 		Quote          float64
 		ExpectedIRR    float64
 		ExpectedSpread float64
@@ -69,7 +69,7 @@ func TestYields(t *testing.T) {
 	for nr, test := range testData {
 
 		// IRR
-		irr, err := fixedincome.Irr(test.Quote, test.B)
+		irr, err := fixedincome.Irr(test.Quote+test.B.Accrued(), test.B)
 		// fmt.Println(irr)
 		if err != nil {
 			fmt.Println(err)
@@ -83,7 +83,7 @@ func TestYields(t *testing.T) {
 		}
 
 		// Z-Spread
-		spread, err := fixedincome.Spread(test.Quote, test.B, &term)
+		spread, err := fixedincome.Spread(test.Quote+test.B.Accrued(), test.B, &term)
 		// fmt.Println(zspread)
 		if err != nil {
 			fmt.Println(err)
