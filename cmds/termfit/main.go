@@ -22,8 +22,8 @@ var (
 	bonds      []bond.Straight
 	prices     []float64
 	file       = flag.String("file", "bonddata.csv", "CSV file for bond data with the following fields: maturity date (format: 02.01.2006), coupon, price")
-	inputFile  = flag.String("input", "", "input term structure (json)")
 	settlement = flag.String("date", "26.11.2021", "date of the bond prices (format: 02.01.2006)")
+	saron      = flag.Float64("rate3m", -0.7121, "3M SARON (SAR3MC or other 3-month short-term rates) in % (deactivate it by setting it to 0.0)")
 )
 
 func main() {
@@ -45,6 +45,28 @@ func main() {
 
 	lastTradingDay, err := time.Parse("02.01.2006", *settlement)
 	// lastTradingDay := time.Date(2021, 11, 26, 0, 0, 0, 0, time.UTC)
+
+	// Saron addition
+	if *saron != 0.0 {
+		saronBond := bond.Straight{
+			Schedule: maturity.Schedule{
+				Settlement: lastTradingDay,
+				Maturity:   lastTradingDay.AddDate(0, 3, 0),
+				Frequency:  4,
+				Basis:      "ACT360",
+			},
+			Coupon:     *saron,
+			Redemption: 100.0,
+		}
+		days := saronBond.YearsToMaturity() * 360.0
+		saronPrice := 100.0 / math.Pow(1.0+*saron/100.0/days, 1.0)
+		bonds = append(bonds, saronBond)
+		prices = append(prices, saronPrice)
+		fmt.Println("SARON maturity:", saronBond.YearsToMaturity())
+		fmt.Println("SARON daycount:", days)
+		fmt.Println("SARON price:", saronPrice)
+	}
+	// read in bonddata
 	for _, line := range records[1:] {
 		maturityDay, err := time.Parse("02.01.2006", line[0])
 		if err != nil {
@@ -59,7 +81,7 @@ func main() {
 			panic(err)
 		}
 
-		bond := bond.Straight{
+		bondS := bond.Straight{
 			Schedule: maturity.Schedule{
 				Settlement: lastTradingDay,
 				Maturity:   maturityDay,
@@ -69,8 +91,9 @@ func main() {
 			Coupon:     coupon,
 			Redemption: 100.0,
 		}
-		bonds = append(bonds, bond)
+		bonds = append(bonds, bondS)
 		prices = append(prices, price)
+
 	}
 
 	// *******************************************************************
@@ -91,7 +114,7 @@ func main() {
 			t := bond.YearsToMaturity()
 			if t >= 3.0/12.0 {
 				quotedPrice := bond.PresentValue(&termNss) // aka clean price
-				sst += math.Pow(quotedPrice-prices[i], 2.0) / (t * t)
+				sst += math.Pow(quotedPrice-prices[i], 2.0) / t
 			}
 		}
 		return sst
@@ -102,7 +125,15 @@ func main() {
 		Func: fun,
 	}
 
-	x := []float64{-0.352323, -0.392947, 5.34703, -3.93181, 4.8696, 3.87489}
+	x := []float64{
+		-0.421199,
+		-0.32659,
+		5.02375,
+		-4.15252,
+		4.7229,
+		3.36644,
+	}
+
 	// fmt.Printf("start.X: %0.4g\n", x)
 	termStart := term.NelsonSiegelSvensson{
 		x[0],
@@ -140,28 +171,41 @@ func main() {
 	// optimized Spline
 	// *******************************************************************
 
-	// find all maturities in xt for interpolation
+	// collect all maturities
 	xt := []float64{}
+	temp := []float64{}
 	xtmap := make(map[float64]bool)
 	for _, bond := range bonds {
 		for _, t := range bond.Schedule.M() {
-			xtmap[math.Round(t*2.0)/2.0] = true
+			xtmap[t] = true
 		}
 	}
+
+	// sort maturities
+	delete(xtmap, 0.0)
 	for key, _ := range xtmap {
-		xt = append(xt, key)
+		temp = append(temp, key)
 	}
+	sort.Float64s(temp)
+
+	// select only sqrt(k) time points for splines
+	for i := 0; i < len(temp); i += int(float64(len(temp)) / 1.5 / math.Sqrt(float64(len(bonds)))) {
+		xt = append(xt, temp[i])
+	}
+	xt[0] = 3.0 / 12.0
+	xt[len(xt)-1] = temp[len(temp)-1]
 	sort.Float64s(xt)
 
+	// define optimitation function for cubic splines
 	funSpline := func(y []float64) float64 {
 		termSpline := term.NewSpline(xt, y, 0.0)
 		sst := 0.0
 		for i, bond := range bonds {
-			// t := bond.YearsToMaturity()
-			// if t >= 1.5/12.0 {
-			quotedPrice := bond.PresentValue(termSpline) // aka clean price
-			sst += math.Pow(quotedPrice-prices[i], 2.0)
-			// }
+			t := bond.YearsToMaturity()
+			if t >= 3.0/12.0 {
+				quotedPrice := bond.PresentValue(termSpline) // aka clean price
+				sst += math.Pow(quotedPrice-prices[i], 2.0) / t
+			}
 		}
 		return sst
 	}
@@ -174,9 +218,8 @@ func main() {
 	// use flat estimates
 	y := make([]float64, len(xt))
 	for i, x := range xt {
-		y[i] = termStart.Z(x)
+		y[i] = termNss.Z(x)
 	}
-	// fmt.Printf("start.X: %0.4g\n", y)
 
 	result, err = optimize.Minimize(p, y, nil, nil)
 	if err != nil {
@@ -219,7 +262,7 @@ func main() {
 	// write to comparison to result.csv
 	fout, err := os.Create("result.csv")
 	if err != nil {
-		log.Fatal("Unable to read input file: result.csv", err)
+		log.Fatal("Unable to read output file: result.csv", err)
 	}
 	defer fout.Close()
 	w := csv.NewWriter(fout)

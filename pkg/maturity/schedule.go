@@ -39,7 +39,11 @@ func (m *Schedule) M() []float64 {
 		if m.Basis == "ACTACT" {
 			maturities = append(maturities, DifferenceInYears(quote, current))
 		} else {
-			maturities = append(maturities, daycount.Fraction(quote, current, time.Time{}, m.Compounding(), m.Basis))
+			frac, err := daycount.Fraction(quote, current, time.Time{}, m.Compounding(), m.Basis)
+			if err != nil {
+				panic(err)
+			}
+			maturities = append(maturities, frac)
 		}
 	}
 
@@ -54,7 +58,11 @@ func (m *Schedule) YearsToMaturity() float64 {
 	if m.Basis == "ACTACT" {
 		return DifferenceInYears(m.Settlement, m.Maturity)
 	} else {
-		return daycount.Fraction(m.Settlement, m.Maturity, time.Time{}, m.Compounding(), m.Basis)
+		frac, err := daycount.Fraction(m.Settlement, m.Maturity, time.Time{}, m.Compounding(), m.Basis)
+		if err != nil {
+			panic(err)
+		}
+		return frac
 	}
 
 }
@@ -75,7 +83,10 @@ func (m *Schedule) DayCountFraction() float64 {
 	}
 
 	// calculate day count fraction
-	frac := daycount.Fraction(d1, d2, d3, m.Compounding(), m.Basis)
+	frac, err := daycount.Fraction(d1, d2, d3, m.Compounding(), m.Basis)
+	if err != nil {
+		panic(err)
+	}
 
 	return frac
 }
