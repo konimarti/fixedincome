@@ -83,7 +83,7 @@ func main() {
 	fmt.Printf("Settlement Date  : %s\n", quoteDate.Format("2006-01-02"))
 	fmt.Printf("Maturity Date    : %s\n", maturityDate.Format("2006-01-02"))
 	fmt.Println("")
-	fmt.Printf("Years to Maturity: %.2f years\n", bond.YearsToMaturity())
+	fmt.Printf("Years to Maturity: %.2f years\n", bond.Last())
 	fmt.Printf("Modified duration: %.2f\n", bond.Duration(ts))
 	fmt.Println("")
 	fmt.Printf("Coupon           : %.2f\n", *coupon)

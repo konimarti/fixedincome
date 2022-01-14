@@ -1,6 +1,7 @@
 package maturity
 
 import (
+	"sort"
 	"time"
 
 	"github.com/konimarti/daycount"
@@ -27,6 +28,12 @@ func (m *Schedule) Compounding() int {
 	return n
 }
 
+//EffectiveCoupon calculates the coupon that is payable given the annual coupon rate
+func (m *Schedule) EffectiveCoupon(annualCoupon float64) float64 {
+	n := float64(m.Compounding())
+	return annualCoupon / n
+}
+
 //M returns a slice of the effective maturities in years of the bond's cash flows
 func (m *Schedule) M() []float64 {
 	maturities := []float64{}
@@ -49,16 +56,24 @@ func (m *Schedule) M() []float64 {
 	return maturities
 }
 
-//YearsToMaturity calculates the time in years to redemption
-func (m *Schedule) YearsToMaturity() float64 {
-	if m.Maturity.Before(m.Settlement) {
+//Last returns the latest maturity value in years (i.e. the years to maturity)
+func (m *Schedule) Last() float64 {
+	t := m.M()
+	if len(t) == 0 {
 		return 0.0
 	}
-	frac, err := daycount.Fraction(m.Settlement, m.Maturity, m.Settlement.AddDate(1, 0, 0), m.Basis)
-	if err != nil {
-		panic(err)
+	sort.Float64s(t)
+	return t[len(t)-1]
+}
+
+//Next returns the next maturity value in years
+func (m *Schedule) Next() float64 {
+	t := m.M()
+	if len(t) == 0 {
+		return 0.0
 	}
-	return frac
+	sort.Float64s(t)
+	return t[0]
 }
 
 // DayCountFraction returns year fraction since last coupon

@@ -23,11 +23,9 @@ func (f *Floating) Accrued() float64 {
 func (f *Floating) PresentValue(ts term.Structure) float64 {
 	pv := 0.0
 
-	maturities := f.Schedule.M()
-	n := f.Schedule.Compounding()
-
 	// discount face value at next reset date
-	pv += (f.Redemption + f.Rate/float64(n)) * ts.Z(maturities[len(maturities)-1])
+	effRate := f.EffectiveCoupon(f.Rate)
+	pv += (f.Redemption + effRate) * ts.Z(f.Next())
 
 	return pv
 }
@@ -35,18 +33,13 @@ func (f *Floating) PresentValue(ts term.Structure) float64 {
 // Duration calculates the duration of the floating-rate bond
 // dP/P = -D * dr
 func (f *Floating) Duration(ts term.Structure) float64 {
-	duration := 0.0
-
-	maturities := f.Schedule.M()
-	n := f.Schedule.Compounding()
 	p := f.PresentValue(ts)
 	if p == 0.0 {
 		return 0.0
 	}
 
 	// discount redemption value
-	years := maturities[len(maturities)-1]
-	duration += years * (f.Redemption + f.Rate/float64(n)) * ts.Z(years)
+	duration := f.Next() * (f.Redemption + f.EffectiveCoupon(f.Rate)) * ts.Z(f.Next())
 
 	return -duration / p
 }
@@ -54,18 +47,12 @@ func (f *Floating) Duration(ts term.Structure) float64 {
 // Convexity calculates the modified duration of the bond
 // dP/P = -D * dr + 1/2 * C * dr^2
 func (f *Floating) Convexity(ts term.Structure) float64 {
-	convex := 0.0
-
-	maturities := f.Schedule.M()
-	n := f.Schedule.Compounding()
 	p := f.PresentValue(ts)
 	if p == 0.0 {
 		return 0.0
 	}
 
-	// discount redemption value
-	years := maturities[len(maturities)-1]
-	convex += years * years * (f.Redemption + f.Rate/float64(n)) * ts.Z(years)
+	convex := f.Next() * f.Next() * (f.Redemption + f.EffectiveCoupon(f.Rate)) * ts.Z(f.Next())
 
 	return convex / p
 }

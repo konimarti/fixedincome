@@ -58,11 +58,11 @@ func main() {
 			Coupon:     *saron,
 			Redemption: 100.0,
 		}
-		days := saronBond.YearsToMaturity() * 360.0
+		days := saronBond.Last() * 360.0
 		saronPrice := 100.0 / math.Pow(1.0+*saron/100.0/days, 1.0)
 		bonds = append(bonds, saronBond)
 		prices = append(prices, saronPrice)
-		fmt.Println("SARON maturity:", saronBond.YearsToMaturity())
+		fmt.Println("SARON maturity:", saronBond.Last())
 		fmt.Println("SARON daycount:", days)
 		fmt.Println("SARON price:", saronPrice)
 	}
@@ -111,7 +111,7 @@ func main() {
 		}
 		sst := 0.0
 		for i, bond := range bonds {
-			t := bond.YearsToMaturity()
+			t := bond.Last()
 			if t >= 3.0/12.0 {
 				quotedPrice := bond.PresentValue(&termNss) // aka clean price
 				sst += math.Pow(quotedPrice-prices[i], 2.0) / t
@@ -201,7 +201,7 @@ func main() {
 		termSpline := term.NewSpline(xt, y, 0.0)
 		sst := 0.0
 		for i, bond := range bonds {
-			t := bond.YearsToMaturity()
+			t := bond.Last()
 			if t >= 3.0/12.0 {
 				quotedPrice := bond.PresentValue(termSpline) // aka clean price
 				sst += math.Pow(quotedPrice-prices[i], 2.0) / t
@@ -244,7 +244,7 @@ func main() {
 	for i, bond := range bonds {
 		quoteNss := bond.PresentValue(&termNss) - bond.Accrued()
 		quoteSpline := bond.PresentValue(termSpline) - bond.Accrued()
-		t := bond.YearsToMaturity()
+		t := bond.Last()
 		output = append(output, []string{
 			fmt.Sprintf("%v", t),
 			fmt.Sprintf("%v", prices[i]),

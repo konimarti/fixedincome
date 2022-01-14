@@ -81,8 +81,8 @@ func TestSchedule(t *testing.T) {
 			}
 		}
 
-		if math.Abs(m.YearsToMaturity()-test.ExpectedRemaining) > tolerance {
-			t.Errorf("Wrong remaining years for test nr %d, got: %f, expected: %f", nr, m.YearsToMaturity(), test.ExpectedRemaining)
+		if math.Abs(m.Last()-test.ExpectedRemaining) > tolerance {
+			t.Errorf("Wrong remaining years for test nr %d, got: %f, expected: %f", nr, m.Last(), test.ExpectedRemaining)
 		}
 
 		if m.Compounding() != test.ExpectedFrequency {
@@ -131,7 +131,7 @@ func TestSchedule_DayCountFraction(t *testing.T) {
 	}
 }
 
-func TestSchedule_YearsToMaturity(t *testing.T) {
+func TestSchedule_Last(t *testing.T) {
 
 	testData := []struct {
 		Quote    time.Time
@@ -179,8 +179,8 @@ func TestSchedule_YearsToMaturity(t *testing.T) {
 			Basis:      "30E360",
 		}
 
-		if math.Abs(m.YearsToMaturity()-test.Expected) > tolerance {
-			t.Errorf("Wrong remaining years for test nr %d, got: %f, expected: %f", nr, m.YearsToMaturity(), test.Expected)
+		if math.Abs(m.Last()-test.Expected) > tolerance {
+			t.Errorf("Wrong remaining years for test nr %d, got: %f, expected: %f", nr, m.Last(), test.Expected)
 		}
 
 	}

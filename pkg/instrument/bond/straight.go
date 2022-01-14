@@ -14,7 +14,7 @@ type Straight struct {
 
 // Accrued calculated the accrued interest
 func (b *Straight) Accrued() float64 {
-	return b.Coupon * b.Schedule.DayCountFraction()
+	return b.Coupon * b.DayCountFraction()
 }
 
 // PresentValue returns the "dirty" bond prices
@@ -22,16 +22,14 @@ func (b *Straight) Accrued() float64 {
 func (b *Straight) PresentValue(ts term.Structure) float64 {
 	dcf := 0.0
 
-	maturities := b.Schedule.M()
-	n := b.Schedule.Compounding()
-
 	// discount coupon payments
-	for _, m := range maturities {
-		dcf += b.Coupon / float64(n) * ts.Z(m)
+	effCoupon := b.EffectiveCoupon(b.Coupon)
+	for _, m := range b.M() {
+		dcf += effCoupon * ts.Z(m)
 	}
 
 	// discount redemption value
-	dcf += b.Redemption * ts.Z(b.YearsToMaturity())
+	dcf += b.Redemption * ts.Z(b.Last())
 
 	return dcf
 }
@@ -41,21 +39,19 @@ func (b *Straight) PresentValue(ts term.Structure) float64 {
 func (b *Straight) Duration(ts term.Structure) float64 {
 	duration := 0.0
 
-	maturities := b.Schedule.M()
-	n := b.Schedule.Compounding()
 	p := b.PresentValue(ts)
 	if p == 0.0 {
 		return 0.0
 	}
 
 	// discount coupon payments
-	for _, m := range maturities {
-		duration += m * b.Coupon / float64(n) * ts.Z(m)
+	effCoupon := b.EffectiveCoupon(b.Coupon)
+	for _, m := range b.M() {
+		duration += m * effCoupon * ts.Z(m)
 	}
 
 	// discount redemption value
-	years := b.YearsToMaturity()
-	duration += years * b.Redemption * ts.Z(years)
+	duration += b.Last() * b.Redemption * ts.Z(b.Last())
 
 	return -duration / p
 }
@@ -65,21 +61,19 @@ func (b *Straight) Duration(ts term.Structure) float64 {
 func (b *Straight) Convexity(ts term.Structure) float64 {
 	convex := 0.0
 
-	maturities := b.Schedule.M()
-	n := b.Schedule.Compounding()
 	p := b.PresentValue(ts)
 	if p == 0.0 {
 		return 0.0
 	}
 
 	// discount coupon payments
-	for _, m := range maturities {
-		convex += m * m * b.Coupon / float64(n) * ts.Z(m)
+	effCoupon := b.EffectiveCoupon(b.Coupon)
+	for _, m := range b.M() {
+		convex += m * m * effCoupon * ts.Z(m)
 	}
 
 	// discount redemption value
-	years := b.YearsToMaturity()
-	convex += years * years * b.Redemption * ts.Z(years)
+	convex += b.Last() * b.Last() * b.Redemption * ts.Z(b.Last())
 
 	return convex / p
 }
