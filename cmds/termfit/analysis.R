@@ -1,8 +1,8 @@
 df<-read.csv("result.csv", header=F)
 colnames(df)<-c("TTM","QuotedPrice","InitialRate","FinalRateNss","FinalRateSpline","CalculatedPriceNss","CalculatedPriceSpline", "zNss","zSpline")
 df<-df[df$TTM>=2/12,]
-max<-max(df[,c(3,4)])
-min<-min(df[,c(3,4)])
+max<-max(df[,c(3,4,5)])
+min<-min(df[,c(3,4,5)])
 maxP<-max(df[,c(6,7)])
 minP<-min(df[,c(6,7)])
 maxZ<-max(df[,c(8,9)])

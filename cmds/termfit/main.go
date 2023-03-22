@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -18,12 +19,15 @@ import (
 	"gonum.org/v1/gonum/optimize"
 )
 
+const DateFmt = "2006-01-02"
+
 var (
 	bonds      []bond.Straight
 	prices     []float64
-	file       = flag.String("file", "bonddata.csv", "CSV file for bond data with the following fields: maturity date (format: 02.01.2006), coupon, price")
-	settlement = flag.String("date", "26.11.2021", "date of the bond prices (format: 02.01.2006)")
+	file       = flag.String("file", "bonddata.csv", fmt.Sprintf("CSV file for bond data with the following fields: maturity date (format: %s), coupon, price", DateFmt))
+	settlement = flag.String("date", time.Now().Format(DateFmt), fmt.Sprintf("date of the bond prices (format: %s)", DateFmt))
 	saron      = flag.Float64("rate3m", -0.7121, "3M SARON (SAR3MC or other 3-month short-term rates) in % (deactivate it by setting it to 0.0)")
+	fileFlag   = flag.String("f", "term.json", "json file containing the parameters for term structure")
 )
 
 func main() {
@@ -43,8 +47,7 @@ func main() {
 		log.Fatal("Unable to parse file as CSV for "+filePath, err)
 	}
 
-	lastTradingDay, err := time.Parse("02.01.2006", *settlement)
-	// lastTradingDay := time.Date(2021, 11, 26, 0, 0, 0, 0, time.UTC)
+	lastTradingDay, err := time.Parse(DateFmt, *settlement)
 
 	// Saron addition
 	if *saron != 0.0 {
@@ -66,9 +69,35 @@ func main() {
 		fmt.Println("SARON daycount:", days)
 		fmt.Println("SARON price:", saronPrice)
 	}
+
+	// read starting term structure
+	termData, err := ioutil.ReadFile(*fileFlag)
+	if err != nil {
+		log.Println(err)
+	}
+
+	ts, err := term.Parse(termData)
+	if err != nil {
+		log.Println(err)
+	}
+
+	x := []float64{
+		-0.421199,
+		-0.32659,
+		5.02375,
+		-4.15252,
+		4.7229,
+		3.36644,
+	}
+
+	if nss, ok := ts.(*term.NelsonSiegelSvensson); ok {
+		log.Println("using NSS model from file")
+		x[0], x[1], x[2], x[3], x[4], x[5] = nss.B0, nss.B1, nss.B2, nss.B3, nss.T1, nss.T2
+	}
+
 	// read in bonddata
 	for _, line := range records[1:] {
-		maturityDay, err := time.Parse("02.01.2006", line[0])
+		maturityDay, err := time.Parse(DateFmt, line[0])
 		if err != nil {
 			panic(err)
 		}
@@ -92,28 +121,22 @@ func main() {
 			Redemption: 100.0,
 		}
 		bonds = append(bonds, bondS)
-		prices = append(prices, price+bondS.Accrued())
+		prices = append(prices, price+bondS.Accrued()) // prices are "dirty" prices
 
 	}
 
 	// *******************************************************************
 	// optimized NSS
 	// *******************************************************************
-	fun := func(x []float64) float64 {
+	fun := func(xf []float64) float64 {
 		termNss := term.NelsonSiegelSvensson{
-			x[0],
-			x[1],
-			x[2],
-			x[3],
-			x[4],
-			x[5],
-			0.0,
+			xf[0], xf[1], xf[2], xf[3], xf[4], xf[5], 0.0,
 		}
 		sst := 0.0
 		for i, bond := range bonds {
 			t := bond.Last()
-			if t >= 3.0/12.0 {
-				quotedPrice := bond.PresentValue(&termNss) // aka clean price
+			quotedPrice := bond.PresentValue(&termNss)
+			if t > 0.0 {
 				sst += math.Pow(quotedPrice-prices[i], 2.0) / t
 			}
 		}
@@ -125,16 +148,6 @@ func main() {
 		Func: fun,
 	}
 
-	x := []float64{
-		-0.421199,
-		-0.32659,
-		5.02375,
-		-4.15252,
-		4.7229,
-		3.36644,
-	}
-
-	// fmt.Printf("start.X: %0.4g\n", x)
 	termStart := term.NelsonSiegelSvensson{
 		x[0],
 		x[1],
@@ -145,6 +158,7 @@ func main() {
 		0.0,
 	}
 
+	// fmt.Printf("start.X: %0.4g\n", x)
 	result, err := optimize.Minimize(p, x, nil, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -164,8 +178,10 @@ func main() {
 		result.X[5],
 		0.0,
 	}
+
 	fmt.Println("Nelson-Siegel-Svensson term structure:")
 	printTerm(&termNss)
+	printTermToFile(&termNss, "nss_opt.json")
 
 	// *******************************************************************
 	// optimized Spline
@@ -203,7 +219,7 @@ func main() {
 		for i, bond := range bonds {
 			t := bond.Last()
 			if t >= 3.0/12.0 {
-				quotedPrice := bond.PresentValue(termSpline) // aka clean price
+				quotedPrice := bond.PresentValue(termSpline)
 				sst += math.Pow(quotedPrice-prices[i], 2.0) / t
 			}
 		}
@@ -236,6 +252,7 @@ func main() {
 	fmt.Println("x=", xt)
 	fmt.Println("y=", result.X)
 	// printTerm(termSpline)
+	// printTermToFile(termSpline, "spline_opt.json")
 
 	// *******************************************************************
 	// print output
@@ -285,4 +302,12 @@ func printTerm(ts term.Structure) {
 		return
 	}
 	fmt.Println(string(text))
+}
+
+func printTermToFile(ts term.Structure, name string) error {
+	data, err := json.MarshalIndent(ts, " ", "")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(name, data, 0644)
 }
