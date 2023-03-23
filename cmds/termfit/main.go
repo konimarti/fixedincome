@@ -26,7 +26,7 @@ var (
 	prices     []float64
 	file       = flag.String("file", "bonddata.csv", fmt.Sprintf("CSV file for bond data with the following fields: maturity date (format: %s), coupon, price", DateFmt))
 	settlement = flag.String("date", time.Now().Format(DateFmt), fmt.Sprintf("date of the bond prices (format: %s)", DateFmt))
-	saron      = flag.Float64("rate3m", -0.7121, "3M SARON (SAR3MC or other 3-month short-term rates) in % (deactivate it by setting it to 0.0)")
+	saron      = flag.Float64("rate3m", 0.0, "3M SARON (SAR3MC or other 3-month short-term rates) in % (deactivate it by setting it to 0.0)")
 	fileFlag   = flag.String("f", "term.json", "json file containing the parameters for term structure")
 )
 
@@ -65,9 +65,10 @@ func main() {
 		saronPrice := 100.0 / math.Pow(1.0+*saron/100.0/days, 1.0)
 		bonds = append(bonds, saronBond)
 		prices = append(prices, saronPrice)
-		fmt.Println("SARON maturity:", saronBond.Last())
-		fmt.Println("SARON daycount:", days)
-		fmt.Println("SARON price:", saronPrice)
+		fmt.Println("3-month rate:")
+		fmt.Println(" Maturity:", saronBond.Last())
+		fmt.Println(" Daycount:", days)
+		fmt.Println(" Price:", saronPrice)
 	}
 
 	// read starting term structure
@@ -130,7 +131,8 @@ func main() {
 	// *******************************************************************
 	fun := func(xf []float64) float64 {
 		termNss := term.NelsonSiegelSvensson{
-			xf[0], xf[1], xf[2], xf[3], xf[4], xf[5], 0.0,
+			xf[0], xf[1], xf[2], xf[3], xf[4], xf[5],
+			0.0,
 		}
 		sst := 0.0
 		for i, bond := range bonds {
@@ -149,12 +151,7 @@ func main() {
 	}
 
 	termStart := term.NelsonSiegelSvensson{
-		x[0],
-		x[1],
-		x[2],
-		x[3],
-		x[4],
-		x[5],
+		x[0], x[1], x[2], x[3], x[4], x[5],
 		0.0,
 	}
 
@@ -205,7 +202,7 @@ func main() {
 	sort.Float64s(temp)
 
 	// select only sqrt(k) time points for splines
-	for i := 0; i < len(temp); i += int(float64(len(temp)) / 1.5 / math.Sqrt(float64(len(bonds)))) {
+	for i := 0; i < len(temp); i += int(float64(len(temp)) / math.Sqrt(float64(len(bonds)))) {
 		xt = append(xt, temp[i])
 	}
 	xt[0] = 3.0 / 12.0
