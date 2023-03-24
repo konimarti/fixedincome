@@ -26,7 +26,7 @@ var (
 	prices     []float64
 	file       = flag.String("file", "bonddata.csv", fmt.Sprintf("CSV file for bond data with the following fields: maturity date (format: %s), coupon, price", DateFmt))
 	settlement = flag.String("date", time.Now().Format(DateFmt), fmt.Sprintf("date of the bond prices (format: %s)", DateFmt))
-	saron      = flag.Float64("rate3m", 0.0, "3M SARON (SAR3MC or other 3-month short-term rates) in % (deactivate it by setting it to 0.0)")
+	onRate     = flag.Float64("onrate", 0.0, "Overnight rate (e.g. Swiss Average Rate Overnight) in % (deactivate it by setting it to 0.0)")
 	fileFlag   = flag.String("f", "term.json", "json file containing the parameters for term structure")
 )
 
@@ -49,26 +49,26 @@ func main() {
 
 	lastTradingDay, err := time.Parse(DateFmt, *settlement)
 
-	// Saron addition
-	if *saron != 0.0 {
-		saronBond := bond.Straight{
+	// Add overnight rate to bond list
+	if *onRate != 0.0 {
+		// create zero-coupon bond with o/n rate
+		onBond := bond.Straight{
 			Schedule: maturity.Schedule{
 				Settlement: lastTradingDay,
-				Maturity:   lastTradingDay.AddDate(0, 3, 0),
-				Frequency:  4,
+				Maturity:   lastTradingDay.AddDate(0, 0, 1),
+				Frequency:  1,
 				Basis:      "ACT360",
 			},
-			Coupon:     *saron,
+			Coupon:     0.0,
 			Redemption: 100.0,
 		}
-		days := saronBond.Last() * 360.0
-		saronPrice := 100.0 / math.Pow(1.0+*saron/100.0/days, 1.0)
-		bonds = append(bonds, saronBond)
-		prices = append(prices, saronPrice)
-		fmt.Println("3-month rate:")
-		fmt.Println(" Maturity:", saronBond.Last())
-		fmt.Println(" Daycount:", days)
-		fmt.Println(" Price:", saronPrice)
+		onPrice := 100.0 / (1.0 + (*onRate)/100.0/360.0)
+		bonds = append(bonds, onBond)
+		prices = append(prices, onPrice)
+		fmt.Println("O/N rate:")
+		fmt.Println(" Maturity:", onBond.Last())
+		fmt.Println(" Daycount:", onBond.Last()*360)
+		fmt.Println(" Price:", onPrice)
 	}
 
 	// read starting term structure
