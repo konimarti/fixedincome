@@ -26,7 +26,7 @@ func Spread(investment float64, s Security, ts term.Structure) (float64, error) 
 		return value - investment
 	}
 
-	root, err := rootfinding.Brent(f, -10.0, 10000.0, Precision)
+	root, err := rootfinding.Brent(f, -10000.0, 10000.0, Precision)
 	return root, err
 }
 

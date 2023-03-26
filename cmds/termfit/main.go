@@ -13,8 +13,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/konimarti/fixedincome"
 	"github.com/konimarti/fixedincome/pkg/instrument/bond"
 	"github.com/konimarti/fixedincome/pkg/maturity"
+	"github.com/konimarti/fixedincome/pkg/rate"
 	"github.com/konimarti/fixedincome/pkg/term"
 	"gonum.org/v1/gonum/optimize"
 )
@@ -23,7 +25,7 @@ const DateFmt = "2006-01-02"
 
 var (
 	bonds      []bond.Straight
-	prices     []float64
+	prices     []float64 // "dirty" prices
 	file       = flag.String("file", "bonddata.csv", fmt.Sprintf("CSV file for bond data with the following fields: maturity date (format: %s), coupon, price", DateFmt))
 	settlement = flag.String("date", time.Now().Format(DateFmt), fmt.Sprintf("date of the bond prices (format: %s)", DateFmt))
 	onRate     = flag.Float64("onrate", 0.0, "Overnight rate (e.g. Swiss Average Rate Overnight) in % (deactivate it by setting it to 0.0)")
@@ -49,28 +51,6 @@ func main() {
 
 	lastTradingDay, err := time.Parse(DateFmt, *settlement)
 
-	// Add overnight rate to bond list
-	if *onRate != 0.0 {
-		// create zero-coupon bond with o/n rate
-		onBond := bond.Straight{
-			Schedule: maturity.Schedule{
-				Settlement: lastTradingDay,
-				Maturity:   lastTradingDay.AddDate(0, 0, 1),
-				Frequency:  1,
-				Basis:      "ACT360",
-			},
-			Coupon:     0.0,
-			Redemption: 100.0,
-		}
-		onPrice := 100.0 / (1.0 + (*onRate)/100.0/360.0)
-		bonds = append(bonds, onBond)
-		prices = append(prices, onPrice)
-		fmt.Println("O/N rate:")
-		fmt.Println(" Maturity:", onBond.Last())
-		fmt.Println(" Daycount:", onBond.Last()*360)
-		fmt.Println(" Price:", onPrice)
-	}
-
 	// read starting term structure
 	termData, err := ioutil.ReadFile(*fileFlag)
 	if err != nil {
@@ -82,22 +62,34 @@ func main() {
 		log.Println(err)
 	}
 
-	x := []float64{
-		-0.421199,
-		-0.32659,
-		5.02375,
-		-4.15252,
-		4.7229,
-		3.36644,
+	// convert annual O/N rate to a continuously compounded rate
+	onCC := rate.Continuous(*onRate, 360)
+
+	// if an overnight rate is given, use a constraint in the optimization
+	// procedure
+	conOpt := math.Abs(onCC) > 1e-7
+	if conOpt {
+		log.Println("using O/N constraint")
 	}
 
+	// initial term structure parameters for the optimization procedure
+	x := []float64{-0.421199, -0.32659, 5.02375, -4.15252, 4.7229, 3.36644}
+
 	if nss, ok := ts.(*term.NelsonSiegelSvensson); ok {
-		log.Println("using NSS model from file")
+		log.Println("using model from file")
 		x[0], x[1], x[2], x[3], x[4], x[5] = nss.B0, nss.B1, nss.B2, nss.B3, nss.T1, nss.T2
 	}
 
-	// read in bonddata
-	for _, line := range records[1:] {
+	if conOpt {
+		fmt.Println("")
+		fmt.Printf("O/N rate:                         %3.4f %%\n", *onRate)
+		fmt.Printf("continuously compounded O/N rate: %3.4f %%\n", onCC)
+		fmt.Printf("implied starting O/N rate:        %3.4f %%\n", x[0]+x[1])
+		fmt.Println("")
+	}
+
+	// read in the bonds
+	for _, line := range records[0:] {
 		maturityDay, err := time.Parse(DateFmt, line[0])
 		if err != nil {
 			panic(err)
@@ -111,7 +103,7 @@ func main() {
 			panic(err)
 		}
 
-		bondS := bond.Straight{
+		bnd := bond.Straight{
 			Schedule: maturity.Schedule{
 				Settlement: lastTradingDay,
 				Maturity:   maturityDay,
@@ -121,8 +113,9 @@ func main() {
 			Coupon:     coupon,
 			Redemption: 100.0,
 		}
-		bonds = append(bonds, bondS)
-		prices = append(prices, price+bondS.Accrued()) // prices are "dirty" prices
+		bonds = append(bonds, bnd)
+		// reminder: prices are "dirty"
+		prices = append(prices, price+bnd.Accrued())
 
 	}
 
@@ -130,24 +123,46 @@ func main() {
 	// optimized NSS
 	// *******************************************************************
 	fun := func(xf []float64) float64 {
-		termNss := term.NelsonSiegelSvensson{
+
+		ts := &term.NelsonSiegelSvensson{
 			xf[0], xf[1], xf[2], xf[3], xf[4], xf[5],
 			0.0,
 		}
+
+		penalty := 1.0e3
+		scale := float64(len(bonds))
 		sst := 0.0
-		for i, bond := range bonds {
-			t := bond.Last()
-			quotedPrice := bond.PresentValue(&termNss)
-			if t > 0.0 {
-				sst += math.Pow(quotedPrice-prices[i], 2.0) / t
+
+		// add contraints penalty
+		if conOpt {
+			sst += scale * math.Pow(onCC-(xf[0]+xf[1]), 2.0)
+			if math.Abs(xf[0])+math.Abs(xf[1]) > 10 {
+				sst += penalty
 			}
 		}
-		return sst
-	}
 
-	// solve optimization problem
-	p := optimize.Problem{
-		Func: fun,
+		for i, bond := range bonds {
+			// minimize least-squares of yields
+			act, err := fixedincome.Irr(prices[i], &bond)
+			if err != nil {
+				log.Printf("yield for bond [%d] not "+
+					"converged\n", i)
+				sst += penalty
+				continue
+			}
+
+			value := bond.PresentValue(ts)
+			est, err := fixedincome.Irr(value, &bond)
+			if err != nil {
+				log.Printf("yield for bond [%d] not "+
+					"converged\n", i)
+				sst += penalty
+				continue
+			}
+
+			sst += math.Pow(act-est, 2.0)
+		}
+		return sst
 	}
 
 	termStart := term.NelsonSiegelSvensson{
@@ -155,7 +170,13 @@ func main() {
 		0.0,
 	}
 
-	// fmt.Printf("start.X: %0.4g\n", x)
+	// solve optimization problem
+	p := optimize.Problem{
+		Func: fun,
+	}
+
+	log.Println("minimize squared error of yields..")
+
 	result, err := optimize.Minimize(p, x, nil, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -165,7 +186,9 @@ func main() {
 	}
 	printResult(result)
 
-	// print out price comparison
+	log.Println("..done")
+
+	// store optmizated parameters
 	termNss := term.NelsonSiegelSvensson{
 		result.X[0],
 		result.X[1],
@@ -209,7 +232,7 @@ func main() {
 	xt[len(xt)-1] = temp[len(temp)-1]
 	sort.Float64s(xt)
 
-	// define optimitation function for cubic splines
+	// define optimization function for the (cubic) splines
 	funSpline := func(y []float64) float64 {
 		termSpline := term.NewSpline(xt, y, 0.0)
 		sst := 0.0
