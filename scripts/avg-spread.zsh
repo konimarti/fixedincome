@@ -16,6 +16,6 @@ do
 	fi
 done
 
-awk '{ctr[$1]++;spread[$1]+=$2;dur[$1]+=$3}END{for (key in ctr) {printf "%15s\t%3.2f\t%3.2f\n", substr(key,1,15), spread[key]/ctr[key], dur[key]/ctr[key]}}' $tmpfile | sort -k2 
+awk '{ctr[$1]++;spread[$1]+=$2;dur[$1]+=$3}END{for (key in ctr) {printf "%15s\t%3.2f\t%3.2f\n", substr(key,1,15), spread[key]/ctr[key], dur[key]/ctr[key]}}' $tmpfile | sort -n -k2
 
 rm $tmpfile
