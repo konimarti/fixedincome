@@ -1,0 +1,18 @@
+df<-read.csv("forward.csv", header=T)
+colnames(df)<-c("x","SpotRate","ForwardRate","Zfac","Ffac")
+max<-max(df[,c(2,3)])
+min<-min(df[,c(2,3)])
+maxZ<-max(df[,c(4,5)])
+minZ<-min(df[,c(4,5)])
+save<-par(mfrow=c(2,1),mar=c(2,4,2,4))
+with(df, {
+	plot(x, SpotRate,type="l",pch=3,col="red",ylim=c(min,max), main="Spot and Forward Rates", ylab="Rates in %", xlab="Time to maturity" )#,log="x")
+	lines(x, ForwardRate, col="green", type="l",pch=3)
+	legend("topleft", legend=c("Spot Rate", "Forward Rate"), lty=1, pch=3, col=c("red","green"), cex=1.0)
+})
+with(df, {
+	plot(x, Zfac,type="l",pch=3,col="red",ylim=c(minZ,maxZ), main="Spot and Forward Discount Factors", ylab="Discount factor", xlab="Time to maturity" )#,log="x")
+	lines(x,Ffac, col="green", type="l",pch=3)
+	legend("topleft", legend=c("Spot Discount Factor","Forward Discount Factor"), lty=1, pch=3,col=c("red", "green"),cex=1.0)
+})
+par(save)
