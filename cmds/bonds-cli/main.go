@@ -89,6 +89,9 @@ func main() {
 	fmt.Printf("Coupon           : %.2f\n", *coupon)
 	fmt.Printf("Frequency        : %d\n", *frequency)
 	fmt.Printf("Day Convention   : %s\n", *daycountname)
+	if days, err := daycount.Days(quoteDate, maturityDate, *daycountname); err == nil {
+		fmt.Printf("Days             : %d\n", int(days))
+	}
 	fmt.Println("")
 	fmt.Printf("Spread           : %.2f\n", *spread)
 
