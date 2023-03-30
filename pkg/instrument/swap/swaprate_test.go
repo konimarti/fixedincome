@@ -53,7 +53,7 @@ func TestInterestRate(t *testing.T) {
 	// IRS CHF 5Y (CH0002113865)
 
 	// Parameters for CHF yield curve at Nov-30-2021
-	// added 9bps z-spread for counterparty risk
+	// added 17bps z-spread for counterparty risk
 	term := term.NelsonSiegelSvensson{
 		-0.43381,
 		-0.308942,
@@ -61,7 +61,7 @@ func TestInterestRate(t *testing.T) {
 		-4.10991,
 		4.65211,
 		3.33637,
-		9.0,
+		17.0,
 	}
 
 	maturities := []float64{
@@ -81,7 +81,7 @@ func TestInterestRate(t *testing.T) {
 			t.Error(err)
 		}
 		expectedRate := expectedSwapRate[i]
-		if math.Abs(swapRate-expectedRate) > 0.05 {
+		if math.Abs(swapRate-expectedRate) > 0.02 {
 			t.Error("interest swap rate calculation is wrong; maturity:", m, "got:", swapRate, "expected:", expectedRate)
 		}
 	}

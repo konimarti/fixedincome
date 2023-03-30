@@ -14,13 +14,15 @@ type NelsonSiegelSvensson struct {
 	Spread float64 `json:"spread"`
 }
 
-// SetSpread sets spread for the calculation of the discount factors
+// SetSpread sets the constant spread that is added to the continuously
+// compounded rate over all maturities
 func (nss *NelsonSiegelSvensson) SetSpread(s float64) Structure {
 	nss.Spread = s
 	return nss
 }
 
-// R returns the continuous compounded spot rate in percent for a maturity of m years
+// Rate returns the continuous compounded spot rate (in %) for a term maturity
+// of m years R_cc(0, m)
 func (nss *NelsonSiegelSvensson) Rate(m float64) float64 {
 	if m == 0.0 {
 		m = 1e-7
@@ -35,28 +37,13 @@ func (nss *NelsonSiegelSvensson) Rate(m float64) float64 {
 	return cc + nss.Spread*0.01
 }
 
-// z return the discount factor for a maturity of m years (spread not considered)
+// Z return the discount factor for a term maturity of m years Z(0, m)
 func (nss *NelsonSiegelSvensson) Z(m float64) float64 {
-	return math.Exp(-(nss.Rate(m) + nss.Spread*0.01) * 0.01 * m)
+	return math.Exp(-nss.Rate(m) * 0.01 * m)
 }
 
-// Rate returns the annually compounded spot rate in percents for a maturity of m years (spread not considered)
-// func (nss *NelsonSiegelSvensson) Rate(m float64) float64 {
-// 	return (math.Exp(nss.r(m)*0.01) - 1.0) * 100.0
-// }
-
-// Z return the discount factor to discount the cash flows for a maturity of m years.
-// coumpounding is the compounding frequency (if 0, set to 1 by default)
-// The discount factor includes the zero-volatility spread.
-// func (nss *NelsonSiegelSvensson) Z(m float64, compounding int) float64 {
-// 	n := 1.0
-// 	if compounding > 0 {
-// 		n = float64(compounding)
-// 	}
-// 	return math.Pow(1.0+(nss.Rate(m)*0.01+nss.Spread*0.0001)/n, -m*n)
-// }
-
-// F is the forward discount factor at time T1=m years
+// F is the forward discount factor F(0, m, m+t) for a zero-bond with maturity
+// t at the future time t
 // func (n *NelsonSiegelSvensson) F(m, t float64) float64 {
-// 	return z(m+t) / z(m)
+// 	return n.Z(m+t) / n.Z(m)
 // }

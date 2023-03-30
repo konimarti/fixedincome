@@ -35,7 +35,7 @@ func TestYields(t *testing.T) {
 			},
 			Quote:          109.70,
 			ExpectedIRR:    -0.574,
-			ExpectedSpread: 0.0,
+			ExpectedSpread: 0.2,
 		},
 		{
 			// ISIN CH0193265995 (quote per 2021-04-16)
@@ -50,7 +50,7 @@ func TestYields(t *testing.T) {
 			},
 			Quote:          102.22,
 			ExpectedIRR:    -0.54,
-			ExpectedSpread: 12.432,
+			ExpectedSpread: 24.8,
 		},
 	}
 

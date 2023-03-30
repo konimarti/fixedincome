@@ -14,7 +14,7 @@ import (
 
 func TestInterestRateSwap(t *testing.T) {
 	// Parameters for CHF yield curve at Nov-30-2021
-	// added 9bps z-spread for counterparty risk
+	// added 17bps z-spread for counterparty risk
 	term := term.NelsonSiegelSvensson{
 		-0.43381,
 		-0.308942,
@@ -22,7 +22,7 @@ func TestInterestRateSwap(t *testing.T) {
 		-4.10991,
 		4.65211,
 		3.33637,
-		10.0,
+		17.0,
 	}
 
 	maturities := []int{
@@ -66,7 +66,7 @@ func TestInterestRateSwap(t *testing.T) {
 
 		value := swapSecurity.PresentValue(&term)
 
-		if math.Abs(value) > 0.25 {
+		if math.Abs(value) > 0.05 {
 			t.Error("value of interest rate swap is wrong; maturity:", m, "got:", value, "expected: 0.0")
 		}
 	}
