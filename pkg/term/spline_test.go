@@ -20,7 +20,7 @@ func TestSpline(t *testing.T) {
 		0.0, // spread
 	}
 
-	maturities := []float64{0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0}
+	maturities := []float64{20.0, 0.25, 0.5, 1.0, 3.0, 2.0, 5.0, 7.0, 10.0, 15.0} // unsorted
 	var refRate, refZ []float64
 	for _, t := range maturities {
 		refRate = append(refRate, refTerm.Rate(t))
@@ -31,7 +31,7 @@ func TestSpline(t *testing.T) {
 	spread := 0.0
 	spline := term.NewSpline(maturities, refZ, spread)
 
-	// test spline approximation: rates
+	// test spline approximation: spot rates
 	sum := 0.0
 	for i, t := range maturities {
 		sum += math.Pow(spline.Rate(t)-refRate[i], 2.0)
@@ -41,7 +41,7 @@ func TestSpline(t *testing.T) {
 		t.Errorf("splines do not accurately interpolte rates of yield curve; got: %v, expected: %v", sum, 0.0)
 	}
 
-	// test spline approximation: rates
+	// test spline approximation: discount factors
 	sum = 0.0
 	for i, t := range maturities {
 		sum += math.Pow(spline.Z(t)-refZ[i], 2.0)

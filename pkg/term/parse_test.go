@@ -18,7 +18,7 @@ func TestParse(t *testing.T) {
 			Type: &term.NelsonSiegelSvensson{},
 		},
 		{
-			Data: []byte(" { \"spline\": null, \"spread\": 0.0 } "),
+			Data: []byte(" { \"maturities\": null, \"discountfactors\": null, \"spread\": 0.0 } "),
 			Type: &term.Spline{},
 		},
 		{
@@ -29,9 +29,6 @@ func TestParse(t *testing.T) {
 
 	for i, test := range testData {
 		ts, err := term.Parse(test.Data)
-		// fmt.Printf("type=%T\n", ts)
-		// dataout, _ := json.Marshal(ts)
-		// fmt.Println(string(dataout))
 		if err != nil {
 			t.Errorf("test %d: %v", i+1, err)
 		}

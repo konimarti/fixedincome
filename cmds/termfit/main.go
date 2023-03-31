@@ -224,9 +224,14 @@ func main() {
 	}
 	sort.Float64s(temp)
 
-	// select only sqrt(k) time points for splines
-	for i := 0; i < len(temp); i += int(float64(len(temp)) / math.Sqrt(float64(len(bonds)))) {
-		xt = append(xt, temp[i])
+	// select only sqrt(k) time points for splines; at least a month apart
+	prev := 0.0
+	// for i := 0; i < len(temp); i += int(float64(len(temp)) / math.Sqrt(float64(len(bonds)))) {
+	for i := 0; i < len(temp); i += 1 {
+		if i == 0 || math.Abs(temp[i]-prev) > 1.0/12.0 {
+			xt = append(xt, temp[i])
+		}
+		prev = temp[i]
 	}
 	xt[0] = 3.0 / 12.0
 	xt[len(xt)-1] = temp[len(temp)-1]
@@ -239,8 +244,8 @@ func main() {
 		for i, bond := range bonds {
 			t := bond.Last()
 			if t >= 3.0/12.0 {
-				quotedPrice := bond.PresentValue(termSpline)
-				sst += math.Pow(quotedPrice-prices[i], 2.0) / t
+				value := bond.PresentValue(termSpline)
+				sst += math.Pow(value-prices[i], 2.0) / t
 			}
 		}
 		return sst
@@ -268,11 +273,11 @@ func main() {
 
 	// print out price comparison
 	termSpline := term.NewSpline(xt, result.X, 0.0)
-	// fmt.Println("Cubic spline term structure:")
-	fmt.Println("x=", xt)
-	fmt.Println("y=", result.X)
+	fmt.Println("Cubic spline term structure")
+	fmt.Println("Maturities      :", xt)
+	fmt.Println("Discount Factors:", result.X)
 	// printTerm(termSpline)
-	// printTermToFile(termSpline, "spline_opt.json")
+	printTermToFile(termSpline, "spline_opt.json")
 
 	// *******************************************************************
 	// print output

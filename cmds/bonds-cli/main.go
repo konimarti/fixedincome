@@ -49,6 +49,7 @@ func main() {
 		fmt.Println(string(data))
 		return
 	}
+	fmt.Println("Term model read from", *fileFlag)
 
 	// parse quote and maturity dates
 	quoteDate, err := time.Parse("2006-01-02", *settlementFlag)
@@ -83,8 +84,8 @@ func main() {
 	fmt.Printf("Settlement Date  : %s\n", quoteDate.Format("2006-01-02"))
 	fmt.Printf("Maturity Date    : %s\n", maturityDate.Format("2006-01-02"))
 	fmt.Println("")
-	fmt.Printf("Years to Maturity: %.2f years\n", bond.Last())
-	fmt.Printf("Modified duration: %.2f\n", bond.Duration(ts))
+	fmt.Printf("Years to Maturity: %.4f years\n", bond.Last())
+	fmt.Printf("Modified duration: %.4f\n", bond.Duration(ts))
 	fmt.Println("")
 	fmt.Printf("Coupon           : %.2f\n", *coupon)
 	fmt.Printf("Frequency        : %d\n", *frequency)
@@ -96,11 +97,11 @@ func main() {
 	fmt.Printf("Spread           : %.2f\n", *spread)
 
 	fmt.Println("")
-	fmt.Printf("    Dirty Price       %10.2f\n", dirty)
-	fmt.Printf("[-] Accrued Interest  %10.2f\n", bond.Accrued())
-	fmt.Println("--------------------------------")
-	fmt.Printf("[=] Clean Price       %10.2f\n", clean)
-	fmt.Println("================================")
+	fmt.Printf("    Dirty Price       %10.4f\n", dirty)
+	fmt.Printf("[-] Accrued Interest  %10.4f\n", bond.Accrued())
+	fmt.Println("----------------------------------")
+	fmt.Printf("[=] Clean Price       %10.4f\n", clean)
+	fmt.Println("==================================")
 	fmt.Println("")
 
 	bondPrice := clean
@@ -111,13 +112,13 @@ func main() {
 		fmt.Println("Yields for the calculated clean price:")
 	}
 
-	fmt.Printf("  Quoted Price        %10.2f\n", bondPrice)
-	fmt.Printf("  Invoice Price       %10.2f\n", bondPrice+bond.Accrued())
+	fmt.Printf("  Quoted Price        %10.4f\n", bondPrice)
+	fmt.Printf("  Invoice Price       %10.4f\n", bondPrice+bond.Accrued())
 	irr, err := fixedincome.Irr(bondPrice+bond.Accrued(), &bond)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("  Yield-to-Maturity   %10.2f %%\n", irr)
+	fmt.Printf("  Yield-to-Maturity   %10.4f %%\n", irr)
 
 	spread, err := fixedincome.Spread(bondPrice+bond.Accrued(), &bond, ts)
 	if err != nil {
