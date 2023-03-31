@@ -24,8 +24,12 @@ import (
 const DateFmt = "2006-01-02"
 
 var (
-	bonds      []bond.Straight
-	prices     []float64 // "dirty" prices
+	bonds  []bond.Straight
+	prices []float64 // "dirty" prices
+	yields []float64 // "dirty" prices
+)
+
+var (
 	file       = flag.String("file", "bonddata.csv", fmt.Sprintf("CSV file for bond data with the following fields: maturity date (format: %s), coupon, price", DateFmt))
 	settlement = flag.String("date", time.Now().Format(DateFmt), fmt.Sprintf("date of the bond prices (format: %s)", DateFmt))
 	onRate     = flag.Float64("onrate", 0.0, "Overnight rate (e.g. Swiss Average Rate Overnight) in % (deactivate it by setting it to 0.0)")
@@ -115,7 +119,14 @@ func main() {
 		}
 		bonds = append(bonds, bnd)
 		// reminder: prices are "dirty"
-		prices = append(prices, price+bnd.Accrued())
+		dirty := price + bnd.Accrued()
+		prices = append(prices, dirty)
+		yield, err := fixedincome.Irr(dirty, &bnd)
+		if err != nil {
+			log.Println(err)
+			yield = math.NaN()
+		}
+		yields = append(yields, yield)
 
 	}
 
@@ -143,11 +154,7 @@ func main() {
 
 		for i, bond := range bonds {
 			// minimize least-squares of yields
-			act, err := fixedincome.Irr(prices[i], &bond)
-			if err != nil {
-				log.Printf("yield for bond [%d] not "+
-					"converged\n", i)
-				sst += penalty
+			if math.IsNaN(yields[i]) {
 				continue
 			}
 
@@ -160,7 +167,7 @@ func main() {
 				continue
 			}
 
-			sst += math.Pow(act-est, 2.0)
+			sst += math.Pow(yields[i]-est, 2.0)
 		}
 		return sst
 	}
@@ -208,7 +215,6 @@ func main() {
 	// *******************************************************************
 
 	// collect all maturities
-	xt := []float64{}
 	temp := []float64{}
 	xtmap := make(map[float64]bool)
 	for _, bond := range bonds {
@@ -224,29 +230,30 @@ func main() {
 	}
 	sort.Float64s(temp)
 
-	// select only sqrt(k) time points for splines; at least a month apart
-	prev := 0.0
-	// for i := 0; i < len(temp); i += int(float64(len(temp)) / math.Sqrt(float64(len(bonds)))) {
-	for i := 0; i < len(temp); i += 1 {
-		if i == 0 || math.Abs(temp[i]-prev) > 1.0/12.0 {
-			xt = append(xt, temp[i])
-		}
-		prev = temp[i]
-	}
-	xt[0] = 3.0 / 12.0
-	xt[len(xt)-1] = temp[len(temp)-1]
-	sort.Float64s(xt)
+	xt := append([]float64{temp[0]}, determine_weights(temp, len(temp)/int(math.Sqrt(float64(len(bonds)))))...)
+	xt = append(xt, temp[len(temp)-1])
 
 	// define optimization function for the (cubic) splines
 	funSpline := func(y []float64) float64 {
-		termSpline := term.NewSpline(xt, y, 0.0)
+		ts := term.NewSpline(xt, y, 0.0)
 		sst := 0.0
+		penalty := 1.0e3
 		for i, bond := range bonds {
-			t := bond.Last()
-			if t >= 3.0/12.0 {
-				value := bond.PresentValue(termSpline)
-				sst += math.Pow(value-prices[i], 2.0) / t
+			// minimize least-squares of yields
+			if math.IsNaN(yields[i]) {
+				continue
 			}
+
+			value := bond.PresentValue(ts)
+			est, err := fixedincome.Irr(value, &bond)
+			if err != nil {
+				log.Printf("yield for bond [%d] not "+
+					"converged\n", i)
+				sst += penalty
+				continue
+			}
+
+			sst += math.Pow(yields[i]-est, 2.0)
 		}
 		return sst
 	}
@@ -335,4 +342,22 @@ func printTermToFile(ts term.Structure, name string) error {
 		return err
 	}
 	return os.WriteFile(name, data, 0644)
+}
+
+// determine_weights returns n weights that will split t in (almost) equal
+// chunkgs
+func determine_weights(t []float64, n int) []float64 {
+	// initialize with equal weights
+	w := make([]float64, n)
+
+	step := len(t) / (n + 1)
+
+	for i := 0; i < n; i++ {
+		idx := (i + 1) * step
+		if idx-1 > 0 && idx < len(t) {
+			w[i] = (t[idx] + t[idx-1]) * 0.5
+		}
+	}
+
+	return w
 }
