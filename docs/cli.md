@@ -34,7 +34,7 @@ Flags work with one or two dashes (`--curve` is documented). `fic help <command>
 | `fic curve forward` | as `show` plus `--tenor 1y`. Columns `t_years, tenor_years, zero_cc_pct, discount_factor, fwd_cc_pct, fwd_annual_pct, fwd_discount_factor` |
 | `fic curve template` | `--model nss\|spline\|flat`, `-o`: a valid curve file |
 | `fic bond fetch` | `--source six` (required), `--issuer NAME` (case-insensitive substring of the short issuer name; `*`, `\|` and control characters are a usage error), `--rating AAA,AA,...` (exact composite ratings, default all incl. unrated), `--currency CHF` (trading currency, three upper-case letters), `--file FILE\|-` (parse a downloaded SIX CSV, no network; the filters are applied to it), `--timeout 30s`, `--format csv`, `-o FILE` (default stdout, atomic). Writes the bond CSV `maturity,coupon_pct,price_clean,id,freq,daycount,issuer,rating` sorted by maturity, then ISIN; see "SIX bond data" below. Exit 2 for usage errors, 1 for network or format errors and when no usable bond is left (the message names the filters) |
-| `fic bond price` | `--curve`, `--date`, `--spread BP`, `--maturity D\|5y`, `--coupon PCT`, `--freq 1\|2\|3\|4\|6\|12` (default 1), `--daycount 30E360\|EUROBOND\|BONDBASIS\|ACT360\|ACTACT`, `--face 100`, `--redemption` (default: the face value), one of `--price CLEAN` (percent of face) or `--yield PCT` (cc), or `--in FILE\|-` for a bond CSV (batch), with `--in`: `--group-by issuer\|freq\|daycount` (one row per group, see below) |
+| `fic bond price` | `--curve`, `--date`, `--spread BP`, `--maturity D\|5y`, `--coupon PCT`, `--freq 1\|2\|3\|4\|6\|12` (default 1), `--daycount 30E360\|EUROBOND\|BONDBASIS\|ACT360\|ACTACT`, `--face 100`, `--redemption` (default: the face value), one of `--price CLEAN` (percent of face) or `--yield PCT` (cc), or `--in FILE\|-` for a bond CSV (batch), with `--in`: `--group-by issuer\|rating\|freq\|daycount` (one row per group, see below); callable and putable bonds: `--call DATE@PRICE[,DATE@PRICE...]`, `--put DATE@PRICE[,...]`, `--call-from DATE@PRICE` (exclusive with `--call`), `--vol PCT` (required with these), `--mean-reversion A` (default 0.03), `--steps N` (default 50), see "Callable and putable bonds" below |
 | `fic swap rate` | `--curve`, `--fwd-curve FILE` (forecast curve of the floating leg, default the same curve), `--tenors 2y,3y,...,10y`, `--freq 2`, `--spread BP` (on the discount curve). Swaps start at the curve date, so par rates do not depend on a valuation date and `swap rate` has no `--date` flag. Columns `tenor, tenor_years, freq, par_rate_pct, annuity` |
 | `fic option price` | `--type call\|put`, `--spot S`, `--strike K`, `--expiry 2y\|2.5\|DATE` (a date `YYYY-MM-DD` / `DD.MM.YYYY` is relative to `--date`), `--vol PCT` or `--implied-from PRICE`, `--rate PCT` or `--curve FILE` (zero rate at the expiry), `--div PCT`, `--date`. Columns `type, spot, strike, expiry_years, vol_pct, rate_cc_pct, div_pct, price, delta, gamma, vega_per_volpt, theta_per_day, rho_per_pct, phi_per_pct` |
 | `fic sim zcb` | `--model holee\|hullwhite\|vasicek`, `--curve`, `--sigma PCT` (short rate vol per sqrt(year), 1 = 100bp), `--mean-reversion A` (hullwhite), `--spread BP` (added to the curve file spread), `--horizon 10y`, `--steps 120`, `--paths 10000`, `--seed N` (default 1, 0 = time based), `--antithetic`. Columns `t_years, curve_zero_cc_pct, curve_fwd_cc_pct, curve_discount, model_discount, mc_discount, mc_stderr, mc_zero_cc_pct, z_score` |
@@ -112,6 +112,39 @@ residuals (the numbers of `--residuals`, rounded). `--report -` writes the HTML 
 `-o FILE`); like `-o` the file is written atomically and must not be an input file or another output. Sample of
 `data/bonds_2021-11-26.csv`: [fit_report_sample.html](fit_report_sample.html).
 
+## Callable and putable bonds
+
+`fic bond price --call 2026-03-31@100,2028-03-31@100 --vol 1.0 ...` values a bond with issuer call rights on a
+Hull-White trinomial lattice (library: `bond.Callable`, package `lattice`) calibrated to the curve. `DATE@PRICE` is a
+date (`YYYY-MM-DD` or `DD.MM.YYYY`) and the **clean** call price in percent of face; `--put` is the same for
+investor puts; `--call-from DATE@PRICE` means callable on every coupon date from `DATE` (before maturity) at `PRICE`.
+Each date is a Bermudan exercise date; a call on a coupon date pays the clean price and the coupon, between coupons
+the clean price plus accrued. Exercise dates before the valuation date are ignored.
+
+- `--vol` (the Hull-White volatility of the short rate in **percent per year**, absolute: 1.0 = 100bp) is required
+  (exit 2): it cannot be observed from the bond. `--mean-reversion` (per year, a decimal, default 0.03) and
+  `--steps` (lattice steps per year, default 50; raise it for large mean reversion or to check convergence) are
+  model inputs too.
+- With `--price`: `oas_bp` is the option-adjusted spread over the effective curve (the spread that makes the
+  callable value equal the market price); `zspread_bp` stays the z-spread of the straight bond to maturity and
+  `yield_cc_pct` the cash-flow yield to maturity. `spread_total_bp` is the file spread plus `--spread` plus the OAS.
+  `ytw_cc_pct`, `ytw_date`: yield to worst over the maturity and the call dates (puts are ignored).
+- `mod_duration`, `convexity` and `dv01` are the **effective** ones (parallel +-50bp shift of the curve, lattice
+  recalibrated, OAS constant); `straight_duration` is the cash-flow duration of the straight bond to maturity.
+- `option_value` = `value_straight` - `value_callable`, clean values at the OAS (without a price: on the curve),
+  positive when the calls dominate. Without a price the callable is valued on the curve: `price_clean` is the model
+  price and `price_clean_model` the same; the OAS columns are empty. `--yield` is not supported for these bonds.
+- Batch: the CSV columns `call` (`2028-05-25@101;2029-05-25@100.5`, semicolon-separated), `call_from` and `put`
+  are optional; rows without them are priced as before. If any row has terms, `--vol` is required, the
+  columns `oas_bp, ytw_cc_pct, ytw_date, straight_duration, option_value, value_straight, value_callable` are added
+  (empty for other rows) and `--group-by` averages the OAS of callable and the z-spread of the other bonds (column
+  `avg_spread_bp` instead of `avg_zspread_bp`). `--call`, `--put` and `--call-from` cannot be combined with `--in`.
+
+Caveats: the OAS depends on the volatility and the mean reversion (more vol means a more valuable call and a lower
+OAS), which are inputs and not observable from the bond; there is no free data source of call schedules (SIX data
+has none), so the terms come from the prospectus; the lattice assumes the curve is dated at the valuation date; puts
+are valued but ignored in the yield to worst. Sample: `data/bonds_callable_example.csv`.
+
 ## Data schemas
 
 Curve file (JSON; percent and bp; `model` is `nss`, `spline` with `knots` and `discount_factors`, or `flat`
@@ -124,7 +157,7 @@ with `params: {"r": ...}`; a file without `model` is an error, `fic curve templa
 ```
 
 Bond file (CSV, see [data/README.md](../data/README.md)): `maturity,coupon_pct,price_clean[,id,freq,daycount,face,redemption,issuer,rating]`,
-coupon in percent, price in percent of face, missing price = empty field.
+coupon in percent, price in percent of face, missing price = empty field. Optional call terms: `call`, `call_from`, `put` (see above).
 
 ## SIX bond data
 

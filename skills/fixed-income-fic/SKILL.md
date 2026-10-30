@@ -55,6 +55,7 @@ go install github.com/konimarti/fixedincome/cmds/fic@latest   # puts fic in $(go
 | Fit curve to bonds | `fic curve fit --bonds bonds.csv --date YYYY-MM-DD --model nss -o fit.json --residuals res.csv --report fit.html` |
 | Price one bond from a quote | `fic bond price --curve curve.json --coupon 1.25 --maturity 2031-05-25 --price 101.2 --format json` |
 | Bond price from a yield | `fic bond price --curve curve.json --coupon 1.25 --maturity 2031-05-25 --yield 1.1` |
+| Callable bond: OAS, effective duration | `fic bond price --curve curve.json --coupon 2 --maturity 2031-03-31 --price 101 --call-from 2026-03-31@100 --vol 1.0 --format json` (or `--call DATE@PRICE,...`, `--put`) |
 | Price a bond list | `fic bond price --curve curve.json --in bonds.csv --format csv` |
 | Average z-spread per issuer or rating | `fic bond price --curve curve.json --in bonds.csv --group-by issuer` (or `rating`) |
 | Par swap rates | `fic swap rate --curve curve.json --tenors 2y,5y,10y` |
@@ -88,6 +89,10 @@ price in percent of face, a missing price is an empty field. `freq` is 1, 2, 3, 
 - **Units.** Passing `0.02` where `2` is meant gives a 0.02% rate. Convert before calling.
 - **Batch rows.** In `bond price --in`, a row that fails has the reason in `status`; the run only exits 1 if every row
   failed. Report failed rows to the user.
+- **Callable bonds.** Always supply `--vol` (percent per year, absolute; 1.0 = 100bp): it is not observable from the
+  bond and `fic` exits 2 without it. The OAS depends on the vol and `--mean-reversion` (default 0.03), so state the
+  assumed values. `mod_duration`/`dv01` are effective ones for these bonds, `zspread_bp` is the straight bond's. Call
+  schedules must come from the user; puts are ignored in the yield to worst.
 - **Spreads.** `zspread_bp` is the spread over the curve actually used (curve file plus `--spread`);
   `spread_total_bp` is relative to the curve without any spread.
 - **Not covered:** notional exchange and calendars in swaps, compounded-in-arrears floaters (SARON, SOFR, ESTR),

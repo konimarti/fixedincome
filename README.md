@@ -68,6 +68,17 @@ yield_cc_pct: -0.59963302      mod_duration: 4.9821577
 zspread_bp:   0.029061277      dv01:         -0.05516782
 ```
 
+**Price a callable bond: OAS and effective duration** (the volatility must be supplied)
+
+```sh
+fic bond price --curve curve.json --coupon 2 --maturity 2031-03-31 --price 101 --call-from 2026-03-31@100 --vol 1.0
+```
+
+```
+zspread_bp: 215.89597          oas_bp:            169.36699
+mod_duration: 6.8309097        straight_duration: 9.1630073
+```
+
 **Price a whole bond list against a curve**
 
 ```sh

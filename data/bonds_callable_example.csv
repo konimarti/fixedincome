@@ -1,0 +1,5 @@
+maturity,coupon_pct,price_clean,id,issuer,call,call_from,put
+2031-03-31,2.0,101,CALL5Y,Example,,2026-03-31@100,
+2031-03-31,2.0,103,CALLDATES,Example,2026-03-31@100;2028-03-31@100,,
+2031-03-31,2.0,99,PUTABLE,Other,,,2027-03-31@100
+2028-03-31,1.0,100.5,STRAIGHT,Other,,,

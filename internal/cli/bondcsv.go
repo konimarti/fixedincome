@@ -42,13 +42,17 @@ type bondRow struct {
 	redemption float64
 	hasRed     bool
 	weight     float64
-	err        error
+	// opt are the call and put terms (nil: straight bond)
+	opt *callTerms
+	err error
 }
 
 // bondFile are the rows of a bond CSV file.
 type bondFile struct {
 	rows                 []bondRow
 	hasIssuer, hasRating bool
+	// callable is true if a row has call or put terms
+	callable bool
 }
 
 // errMissingPrice is the reason why fit skips a row without a price.
@@ -64,6 +68,7 @@ var bondColumnAliases = map[string]string{
 	"daycount": "daycount", "day_count": "daycount",
 	"face": "face", "redemption": "redemption", "weight": "weight",
 	"issuer": "issuer", "rating": "rating",
+	"call": "call", "call_from": "call_from", "put": "put",
 }
 
 // missingTokens are field values that mean "no price".
@@ -71,7 +76,9 @@ var missingTokens = map[string]bool{"": true, "n/a": true, "na": true, "n.a.": t
 
 // readBondRows reads a bond CSV file: comma-separated, header row with the
 // columns maturity, coupon_pct, price_clean and optionally id, freq,
-// daycount, face, redemption, issuer, rating (column names are case-insensitive, in
+// daycount, face, redemption, issuer, rating and the call terms call,
+// call_from, put (DATE@PRICE; several calls or puts separated by semicolons
+// in the field) (column names are case-insensitive, in
 // any order; "coupon", "price", "frequency" are accepted as aliases). A
 // missing price (empty, N/A, -) is not an error of the row (hasPrice is
 // false). A
@@ -227,6 +234,33 @@ func readBondRows(r io.Reader) (*bondFile, error) {
 			} else {
 				b.weight = f
 			}
+		}
+		ct := &callTerms{}
+		if v, ok := get(row, "call"); ok && v != "" {
+			var err error
+			if ct.calls, err = parseCallTerms(v, ";"); err != nil {
+				fail("call: %v", err)
+			}
+		}
+		if v, ok := get(row, "put"); ok && v != "" {
+			var err error
+			if ct.puts, err = parseCallTerms(v, ";"); err != nil {
+				fail("put: %v", err)
+			}
+		}
+		if v, ok := get(row, "call_from"); ok && v != "" {
+			if t, err := parseCallTerm(v); err != nil {
+				fail("call_from: %v", err)
+			} else {
+				ct.callFrom = &t
+			}
+		}
+		if len(ct.calls) > 0 && ct.callFrom != nil {
+			fail("call and call_from cannot be combined")
+		}
+		if ct.any() {
+			b.opt = ct
+			bf.callable = true
 		}
 		bf.rows = append(bf.rows, b)
 	}

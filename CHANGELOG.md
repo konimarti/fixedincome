@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Callable and putable bonds in `fic bond price`**: `--call DATE@PRICE[,...]`, `--put`, `--call-from DATE@PRICE`,
+  `--vol PCT` (required), `--mean-reversion` (default 0.03), `--steps` (default 50). Hull-White lattice value, OAS,
+  yield to worst, effective duration and convexity, DV01, option value; `--in` accepts the CSV columns `call`,
+  `call_from` and `put` and adds the callable columns only if a row has terms. `--group-by` uses the OAS for callable
+  rows. See docs/cli.md. Sample: `data/bonds_callable_example.csv`.
+- Library: package `lattice` (Hull-White trinomial tree) and `bond.Callable`.
+
 ## fic bond fetch --source six
 
 - **`fic bond fetch --source six [--issuer NAME] [--rating AAA,AA,...] [--currency CHF] [--file FILE|-]

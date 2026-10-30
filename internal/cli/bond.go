@@ -12,6 +12,7 @@ import (
 
 	"github.com/konimarti/fixedincome/pkg/cashflow"
 	"github.com/konimarti/fixedincome/pkg/instrument/bond"
+	"github.com/konimarti/fixedincome/pkg/lattice"
 	"github.com/konimarti/fixedincome/pkg/maturity"
 	"github.com/konimarti/fixedincome/pkg/rate"
 	"github.com/konimarti/fixedincome/pkg/term"
@@ -30,6 +31,10 @@ type bondInput struct {
 	// price is the clean market price in percent of face; yield the
 	// continuously compounded market yield (decimal); at most one is set
 	price, yield *float64
+	// opt are the embedded options (nil: straight bond), hw the lattice
+	// parameters for them
+	opt *callTerms
+	hw  hwParams
 }
 
 // bondValue is the valuation of a bond. Prices are in percent of face (per
@@ -52,6 +57,10 @@ type bondValue struct {
 	duration  float64
 	convexity float64
 	dv01      float64
+	// call is the valuation of the embedded options (nil: straight bond); then
+	// duration, convexity and dv01 are the effective ones and the spread is the
+	// OAS
+	call *callable
 }
 
 // valueBond values the bond at the settlement date. The market dirty price
@@ -119,6 +128,15 @@ func valueBond(in bondInput, settle time.Time, curve term.Curve) (bondValue, err
 	v.duration = cashflow.Duration(cfs, risk)
 	v.convexity = cashflow.Convexity(cfs, risk)
 	v.dv01 = cashflow.DV01(cfs, risk) * scale
+	if in.opt.any() {
+		if in.yield != nil {
+			return v, errors.New("a yield is not supported for a bond with call or put terms (use a price, or --spread)")
+		}
+		v.call = &callable{}
+		if err := valueCallable(in, &v, b, settle, curve, cfs, accrued, dirty); err != nil {
+			return v, err
+		}
+	}
 	return v, nil
 }
 
@@ -160,11 +178,17 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 	price := fs.Float64("price", math.NaN(), "quoted clean price in percent of face (yields and z-spread are implied from it)")
 	yield := fs.Float64("yield", math.NaN(), "continuously compounded yield in percent (the price is computed from it)")
 	in := fs.String("in", "", "batch mode: CSV file with the bonds (- for stdin); columns maturity,coupon_pct,price_clean[,id,freq,daycount,face,redemption,issuer,rating]")
+	callF := fs.String("call", "", "issuer call dates and clean prices DATE@PRICE[,DATE@PRICE...] (price in percent of face); needs --vol")
+	putF := fs.String("put", "", "investor put dates and clean prices DATE@PRICE[,DATE@PRICE...]; needs --vol")
+	callFrom := fs.String("call-from", "", "callable on every coupon date from DATE at PRICE: DATE@PRICE (exclusive with --call); needs --vol")
+	vol := fs.Float64("vol", math.NaN(), "Hull-White volatility of the short rate in percent per year (absolute, 1.0 = 100bp); required with call or put terms")
+	meanRev := fs.Float64("mean-reversion", 0.03, "Hull-White mean reversion per year (decimal, not percent) for call or put terms")
+	steps := fs.Int("steps", lattice.DefaultStepsPerYear, "lattice steps per year for call or put terms")
 	groupBy := fs.String("group-by", "", "with --in: one row per group of the column issuer|rating|freq|daycount instead of one per bond (n, duration-weighted z-spread, mean duration, DV01 sum)")
 	return fs, func() error {
 		set := setFlags(fs)
 		if *in != "" {
-			for _, n := range []string{"maturity", "coupon", "price", "yield"} {
+			for _, n := range []string{"maturity", "coupon", "price", "yield", "call", "put", "call-from"} {
 				if set[n] {
 					return usagef("--%s cannot be combined with --in (put it into the CSV file)", n)
 				}
@@ -178,6 +202,22 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 			if !groupColumns[*groupBy] {
 				return usagef("invalid --group-by %q (issuer, rating, freq, daycount)", *groupBy)
 			}
+		}
+		if set["call"] && set["call-from"] {
+			return usagef("--call and --call-from cannot be combined")
+		}
+		hw := hwParams{a: *meanRev, steps: *steps}
+		if set["vol"] {
+			if !(*vol > 0) || math.IsInf(*vol, 0) {
+				return usagef("invalid --vol %v: must be positive (percent per year)", *vol)
+			}
+			hw.sigma = fromPct(*vol)
+		}
+		if !(hw.a >= 0) || math.IsInf(hw.a, 0) {
+			return usagef("invalid --mean-reversion %v: must be non-negative", *meanRev)
+		}
+		if hw.steps < 1 {
+			return usagef("invalid --steps %d: must be at least 1", *steps)
 		}
 		if set["price"] && set["yield"] {
 			return usagef("--price and --yield cannot be combined")
@@ -214,7 +254,27 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 		}
 		d := bondDefaults{freq: fr, dc: dc, face: *face, redemption: red}
 		if *in != "" {
-			return bondBatch(e, &cf, &ff, fmtOut, *in, *groupBy, d)
+			return bondBatch(e, &cf, &ff, fmtOut, *in, *groupBy, d, hw)
+		}
+		ct := &callTerms{}
+		if ct.calls, err = parseCallTerms(*callF, ","); err != nil {
+			return usagef("--call: %v", err)
+		}
+		if ct.puts, err = parseCallTerms(*putF, ","); err != nil {
+			return usagef("--put: %v", err)
+		}
+		if set["call-from"] {
+			t, err := parseCallTerm(*callFrom)
+			if err != nil {
+				return usagef("--call-from: %v", err)
+			}
+			ct.callFrom = &t
+		}
+		if ct.any() && !set["vol"] {
+			return usagef("--vol is required with --call, --put or --call-from: the volatility of the call option cannot be observed from the bond (percent per year, e.g. --vol 1.0)")
+		}
+		if ct.any() && set["yield"] {
+			return usagef("--yield cannot be combined with --call, --put or --call-from (use --price, or no quote to value on the curve)")
 		}
 		// single bond
 		if set["price"] && !(*price > 0) {
@@ -232,6 +292,9 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 			return usagef("%v", err)
 		}
 		bi := bondInput{maturity: mat, coupon: fromPct(*coupon), freq: fr, dc: dc, face: *face, redemption: red}
+		if ct.any() {
+			bi.opt, bi.hw = ct, hw
+		}
 		if set["price"] {
 			bi.price = price
 		}
@@ -250,6 +313,17 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 		cols := bondRecordCols
 		vals := []any{formatDate(l.settle), formatDate(mat), v.ttm, v.accrued, v.dirty, v.clean, v.cleanModel,
 			toPct(v.yieldCC), toPct(v.yieldAnn), toBP(v.zspread), toBP(v.spreadTotal), v.duration, v.convexity, v.dv01}
+		if v.call != nil {
+			// the risk columns are the effective ones; the OAS and the yield to
+			// worst need a market price
+			cc := callableCols
+			cv := v.callableVals()
+			if !v.market {
+				cc, cv = cc[3:], cv[3:]
+			}
+			cols = append(append([]string(nil), cols...), cc...)
+			vals = append(vals, cv...)
+		}
 		if fmtOut == formatText && !v.market {
 			// no market quote: the z-spread is trivially 0 (the total spread is the
 			// spread of the curve) and not shown
@@ -275,7 +349,7 @@ type bondDefaults struct {
 }
 
 // bondTableCols are the columns of the batch output.
-func bondTableCols(withIssuer, withRating bool) []string {
+func bondTableCols(withIssuer, withRating, withCall bool) []string {
 	cols := []string{"id"}
 	if withIssuer {
 		cols = append(cols, "issuer")
@@ -283,9 +357,13 @@ func bondTableCols(withIssuer, withRating bool) []string {
 	if withRating {
 		cols = append(cols, "rating")
 	}
-	return append(cols, "maturity", "coupon_pct", "freq", "daycount", "ttm_years", "accrued", "price_source",
+	cols = append(cols, "maturity", "coupon_pct", "freq", "daycount", "ttm_years", "accrued", "price_source",
 		"price_clean", "price_dirty", "price_clean_model", "yield_cc_pct", "yield_annual_pct", "zspread_bp",
-		"spread_total_bp", "mod_duration", "convexity", "dv01", "status")
+		"spread_total_bp", "mod_duration", "convexity", "dv01")
+	if withCall {
+		cols = append(cols, callableCols...)
+	}
+	return append(cols, "status")
 }
 
 // groupColumns are the columns of the batch output that --group-by accepts.
@@ -328,8 +406,13 @@ func (s *groupStats) add(key string, zspreadBP, duration, dv01 float64) {
 
 // table returns one row per group sorted by the average z-spread (then by
 // name); name is the title of the first column.
-func (s *groupStats) table(name string) *table {
-	t := &table{cols: []string{name, "n", "avg_zspread_bp", "avg_mod_duration", "dv01_sum"}}
+func (s *groupStats) table(name string, withCall bool) *table {
+	spread := "avg_zspread_bp"
+	if withCall {
+		// OAS of the callable bonds, z-spread of the others
+		spread = "avg_spread_bp"
+	}
+	t := &table{cols: []string{name, "n", spread, "avg_mod_duration", "dv01_sum"}}
 	avg := func(x *group) float64 {
 		if x.d > 0 {
 			return x.zd / x.d
@@ -358,7 +441,7 @@ func (s *groupStats) table(name string) *table {
 // bondBatch values the bonds of a CSV file. Failing rows get an error text
 // in the status column instead of aborting; the exit code is 1 only if all
 // rows failed.
-func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, groupBy string, d bondDefaults) error {
+func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, groupBy string, d bondDefaults, hw hwParams) error {
 	r, closeIn, err := openInput(e, path)
 	if err != nil {
 		return err
@@ -374,6 +457,9 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 	if groupBy == "rating" && !bf.hasRating {
 		return fmt.Errorf("%s: --group-by rating needs a rating column in the input", path)
 	}
+	if bf.callable && !(hw.sigma > 0) {
+		return usagef("--vol is required: %s has rows with call or put terms and the volatility cannot be observed from the bonds (percent per year, e.g. --vol 1.0)", path)
+	}
 	l, err := cf.load(e)
 	if err != nil {
 		return err
@@ -382,7 +468,7 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 	if err != nil {
 		return err
 	}
-	t := &table{cols: bondTableCols(bf.hasIssuer, bf.hasRating)}
+	t := &table{cols: bondTableCols(bf.hasIssuer, bf.hasRating, bf.callable)}
 	var failedIDs []string
 	failed := 0
 	groups := &groupStats{}
@@ -404,7 +490,7 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 		}
 		err := b.err
 		if err == nil {
-			bi := bondInput{maturity: b.maturity, coupon: b.coupon, freq: fr, dc: dc, face: face, redemption: red}
+			bi := bondInput{maturity: b.maturity, coupon: b.coupon, freq: fr, dc: dc, face: face, redemption: red, opt: b.opt, hw: hw}
 			if b.hasPrice {
 				p := b.price
 				bi.price = &p
@@ -428,7 +514,11 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 			if x, perr := parseFinite(b.couponRaw); perr == nil {
 				cpn = x
 			}
-			row = append(row, b.matRaw, cpn, b.freqRaw, b.dcRaw, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err.Error())
+			row = append(row, b.matRaw, cpn, b.freqRaw, b.dcRaw, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+			if bf.callable {
+				row = append(row, make([]any, len(callableCols))...)
+			}
+			row = append(row, err.Error())
 			t.add(row...)
 			continue
 		}
@@ -440,8 +530,11 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 			ycv, yav, zs, st = nil, nil, nil, nil
 		}
 		row = append(row, formatDate(b.maturity), toPct(b.coupon), int(fr), dc.String(), v.ttm, v.accrued, source,
-			v.clean, v.dirty, v.cleanModel, ycv, yav, zs, st, v.duration, v.convexity, v.dv01, "ok")
-		t.add(row...)
+			v.clean, v.dirty, v.cleanModel, ycv, yav, zs, st, v.duration, v.convexity, v.dv01)
+		if bf.callable {
+			row = append(row, v.callableVals()...)
+		}
+		t.add(append(row, "ok")...)
 		if v.market {
 			key := ""
 			switch groupBy {
@@ -454,11 +547,15 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 			case "daycount":
 				key = dc.String()
 			}
-			groups.add(key, toBP(v.zspread), v.duration, v.dv01)
+			spread := toBP(v.zspread)
+			if v.call != nil {
+				spread = toBP(v.call.oas)
+			}
+			groups.add(key, spread, v.duration, v.dv01)
 		}
 	}
 	if groupBy != "" {
-		t = groups.table(groupBy)
+		t = groups.table(groupBy, bf.callable)
 		if skipped := len(bf.rows) - groups.rows; skipped > 0 {
 			e.warnf("%d of %d rows not in the groups (status not ok or no market price)", skipped, len(bf.rows))
 		}
