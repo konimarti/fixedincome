@@ -146,6 +146,54 @@ valuation) has been redesigned. The API is not backwards compatible.
 - `Fraction()` is wrong for EUROBOND/BONDBASIS February-end periods and uses
   a 30E/360 denominator for ACT360 (not used by this library any more).
 
+### Curve fitting (`pkg/fit`, `termfit`)
+
+- New package `pkg/fit`: `ReadBondsCSV`, `PrepareBonds` (cash flows,
+  accrued interest and market yields computed once; matured bonds and bonds
+  below `Options.MinTTM`, default 0.1y, are dropped with a warning),
+  `FitNSS` and `FitSpline` returning a `Result` with per-bond residuals
+  (clean/dirty prices in percent of face, continuously compounded and annual
+  yields, error in bp), RMSE, convergence flag and warnings. The zero values
+  of `Options` are documented in a table; `Options.Lambda` is a `*float64`
+  (nil = generalized cross-validation, `fit.Lambda(0)` = no smoothing).
+- Quoted prices are percent of face for any `Bond.Face` (the dirty price is
+  `CleanPrice*Face/100 + accrued`). The settlement date is the curve date
+  (no settlement lag is applied).
+- The objective remains the squared **yield** errors (continuously
+  compounded). Model yields are solved by Newton's method on the log price
+  with a warm start (always converges, no penalty discontinuity); the
+  Jacobian uses the implicit function theorem. `Objective: ObjectivePrice`
+  is available for comparison; `WeightInvDuration` weights by 1/(D*P).
+  `Options.Huber` (threshold in bp) gives a robust Huber fit by IRLS.
+- NSS: deterministic multi-start over a grid of decay parameters (betas
+  solved per grid point), the best starts of each tau ordering polished by a
+  bound-constrained (active-set) Levenberg-Marquardt with the analytic
+  Jacobian; tau in [0.1, 30] years, soft separation of tau1 and tau2 (ratio
+  >= 1.25), light ridge on B2 and B3; the overnight constraint `B0 + B1 = on`
+  is exact (B1 eliminated). Warnings for taus at a bound, an active
+  separation constraint, beta blow-ups, a poorly determined long end (B0),
+  alternative local solutions within 5% of the objective, outliers (> 4 x
+  RMSE) and implausible market yields (> 25%).
+- Spline: zero rates at 5-8 knots between the shortest and longest maturity
+  (a blend of maturity quantiles and a logarithmic grid) plus a short knot,
+  smoothing penalty on the second differences of the zero rates, selected by
+  generalized cross-validation by default.
+- `fit.OvernightToCC` converts a simple ACT/360 overnight rate to the
+  continuously compounded rate on the ACT/365F axis (365 ln(1 + r/360)).
+- `termfit` is a thin wrapper over `pkg/fit` with the new flags `-min-ttm`,
+  `-lambda`, `-huber`, `-settle-lag`, `-objective yield|price` and
+  `-model nss|spline|both` (models are fitted independently).
+  `result.csv` now has a header and named columns (`model, id, maturity,
+  ttm_years, price_clean_market, price_clean_model, yield_cc_market_pct,
+  yield_cc_model_pct, yield_annual_market_pct, yield_annual_model_pct,
+  error_bp, zero_cc_model_pct, discount_factor_model`), sorted by time to
+  maturity; `analysis.R` takes the input and output paths as arguments.
+- Behaviour changes: bonds with less than 0.1 years to maturity are no
+  longer used by default (`-min-ttm 0` keeps all); `-onrate` is converted
+  with `365 ln(1 + r/360)` (previously daily compounding on a 360-day
+  year), and an unset `-onrate` means no constraint while `-onrate 0`
+  imposes 0%; a missing explicit `-f` file is logged and ignored.
+
 ### Dependencies
 
 - Removed `github.com/cnkei/gospline` (not goroutine-safe) and
