@@ -1,0 +1,10 @@
+﻿maturity,coupon_pct,price_clean,id,issuer
+2026-05-25,1.25,109.70,A,"Bank, One"
+2028-06-30,1.5,101.2,B,"Bank, One"
+2030-01-15,0.5,N/A,C,Bank One
+
+2029-03-31,0,,D,Bank Two
+31.12.2027,2.25,104.5,E,Bank Two
+2021-01-01,1,100,F,Bank Two
+not-a-date,1,100,G,Bank Two
+2031-06-30,"1,5",101,H,Bank Two

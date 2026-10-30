@@ -1,0 +1,14 @@
+type: call
+spot: 110
+strike: 100
+expiry_years: 2
+vol_pct: 30
+rate_cc_pct: 2
+div_pct: 0
+price: 25.129067
+delta: 0.70231181
+gamma: 0.0074240342
+vega_per_volpt: 0.53898488
+theta_per_day: -0.013931209
+rho_per_pct: 1.0425046
+phi_per_pct: -1.545086

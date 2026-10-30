@@ -1,0 +1,28 @@
+# built binaries
+/fic
+/fi
+/bonds-cli
+/swaprate-cli
+/option-cli
+/termfit
+/fwdcrv
+/holee
+*.test
+*.exe
+
+# R
+Rplots.pdf
+*.png.tmp
+
+# scratch outputs of the examples (fic curve fit -o fit.json, scripts, plots)
+/fit.json
+/fit.*.json
+/curve.json
+/bonds.csv
+/priced.csv
+/residuals.csv
+/curve.csv
+/curve.png
+/sim.csv
+/sim.png
+.*.tmp*

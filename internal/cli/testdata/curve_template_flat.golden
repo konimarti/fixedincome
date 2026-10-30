@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "model": "flat",
+  "currency": "CHF",
+  "params": {
+    "r": 1
+  },
+  "spread_bp": 0
+}

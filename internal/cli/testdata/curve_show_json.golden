@@ -1,0 +1,5 @@
+[
+  {"t_years": 1, "zero_cc_pct": -0.7852159729, "zero_annual_pct": -0.7821412054, "discount_factor": 1.007883069, "inst_fwd_cc_pct": -0.8022139932},
+  {"t_years": 2, "zero_cc_pct": -0.7792513759, "zero_annual_pct": -0.7762230834, "discount_factor": 1.015707107, "inst_fwd_cc_pct": -0.727791915},
+  {"t_years": 3, "zero_cc_pct": -0.7391888075, "zero_annual_pct": -0.7364635261, "discount_factor": 1.022423372, "inst_fwd_cc_pct": -0.5828662663}
+]

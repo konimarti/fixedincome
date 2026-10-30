@@ -1,0 +1,1 @@
+{"type": "put", "spot": 100, "strike": 105, "expiry_years": 1, "vol_pct": 25, "rate_cc_pct": -0.7852159729, "div_pct": 1.5, "price": 14.2338334, "delta": -0.5557779725, "gamma": 0.01551626149, "vega_per_volpt": 0.3879065372, "theta_per_day": -0.01707033082, "rho_per_pct": -0.6981163065, "phi_per_pct": 0.5557779725}

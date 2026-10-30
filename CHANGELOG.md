@@ -1,5 +1,111 @@
 # Changelog
 
+## WP5: unified CLI, scripts, R
+
+One binary `fic` (`cmds/fic`, implementation in `internal/cli`) replaces the
+six apps with consistent flags, units, formats and exit codes. The old
+apps are deprecated shims (`internal/cli/legacy.go`, tiny `main.go`) that
+keep their old flags and print `deprecated: use "fic ..."` to stderr.
+
+The binary is called `fic` (not `fi`, a reserved word in bash and zsh); the
+environment variable is `FIC_CURVE` (`FI_CURVE` is still read, with a
+deprecation warning on stderr, when it is the only one set).
+
+### Output format changes (legacy shims)
+
+There is no `--legacy-output` switch.
+
+- `bonds-cli` and `swaprate-cli` print the text output of `fic bond price` and
+  `fic swap rate` instead of the old layout. The old "Implied spread" is
+  `spread_total_bp` (file spread + `-spread` + z-spread, e.g. 155.4 for
+  `-spread 50 -quote 101 -n 2` of the old tool). Duration and convexity are
+  evaluated at the market price (on the curve shifted by the z-spread) when a
+  quote is given, not on the curve (e.g. 8.5725 instead of 8.6061).
+- `option-cli` keeps its old text output and the raw units of the Greeks;
+  `-vola` stays a decimal (warning for `-vola` > 5). `fic option price` reports
+  `vega_per_volpt`, `theta_per_day`, `rho_per_pct` and `phi_per_pct`.
+- `termfit`, `fwdcrv` and `holee` keep their legacy files and formats.
+
+### Safety and robustness
+
+- `-o FILE` is atomic (temporary file in the same directory, renamed on
+  success); a failure never damages or deletes an existing file; `-o` equal to
+  an input file is a usage error (exit 2).
+- `fic bond price --in`: a row with an empty or `N/A` price is valued on the
+  curve (`price_source` = `model`); failed rows echo the raw input fields;
+  stderr names the first failed ids. Output columns `price_source` and
+  `spread_total_bp` were added.
+- CSV output guards text fields starting with `= + - @`, tab or CR with an
+  apostrophe; negative zero is printed as 0; a `--spread` that makes the
+  discount factors under- or overflow is an error.
+- `swap rate` has no `--date` flag (swaps start at the curve date).
+- A terminal is a character device other than `/dev/null`.
+
+### Migration (old flag -> new flag)
+
+| Old | New |
+|---|---|
+| `bonds-cli -f F` | `fic bond price --curve F` (env `FIC_CURVE`, default `./curve.json`) |
+| `-settlement D` / `-maturity M` / `-coupon C` (%) | `--date D` / `--maturity M` (date or `5y`) / `--coupon C` (%) |
+| `-n N` | `--freq N` (1, 2, 3, 4, 6, 12; invalid values exit 2 with the valid list) |
+| `-quote P` (0 = none) | `--price P` (clean, percent of face) or `--yield PCT` (cc) |
+| `-redemption R`, `-daycount X`, `-spread S` | `--redemption R`, `--daycount X`, `--spread S` |
+| `swaprate-cli -f F -s S` | `fic swap rate --curve F --spread S [--tenors ...] [--freq 2] [--fwd-curve F2]` |
+| `option-cli -type -s -k -t -q -vola -r` | `fic option price --type --spot --strike --expiry --div --vol --rate` (`-vola 0.3` is `--vol 30`; `-t 2` is `--expiry 2y`; Greeks in `vega_per_volpt`, `theta_per_day`, `rho_per_pct`, `phi_per_pct`) |
+| `termfit -file -date -settle-lag -onrate -f -min-ttm -lambda -huber -objective -model` | `fic curve fit --bonds --date --settle-lag --onrate --start --min-ttm --lambda (gcv\|X) --huber --objective --model -o --residuals` |
+| `fwdcrv -f -m -t` | `fic curve forward --curve --tenor --t` |
+| `holee -f -n -m -s -paths -seed -o` | `fic sim zcb --model holee --curve --steps --horizon --sigma --paths --seed -o` (`-s 0.02` is `--sigma 2`) |
+| `analysis.R` (termfit, fwdcrv, holee) | `r/curve.R`, `r/sim.R` (removed from `cmds/`) |
+
+### Behaviour changes
+
+- Units at the command line: all rates, yields, vols and dividend yields are
+  percent, spreads bp, dates ISO (CSV inputs also `DD.MM.YYYY`); `fic` has no
+  decimal flags (the shims keep `holee -s` and `option-cli -vola` decimal).
+- `--spread` is **added** to the `spread_bp` of the curve file (`bonds-cli`
+  and `swaprate-cli` replaced it).
+- `--date` defaults to the `asof` of the curve file (else today); a
+  differing `--date` gives a warning.
+- `bond price`: reports `yield_cc_pct` and `yield_annual_pct`; the z-spread is
+  relative to the effective curve (file spread plus `--spread`) and
+  duration, convexity and DV01 are evaluated on the curve shifted by the
+  z-spread (at the market price); all prices per 100 of face; a bond that is
+  matured on the settlement date exits 1 (`bonds-cli` exited 1 via
+  `log.Fatal`, too); batch mode with a per-row `status`.
+- `curve fit`: stdout is the curve JSON (not a summary), the summary and
+  warnings go to stderr; nothing is written to the current directory;
+  `--model both` writes `<stem>.nss.json` and `<stem>.spline.json`; the
+  curve file given as `--start` must exist and be an NSS curve (the old
+  `-f` implicitly read `term.json` and ignored errors); rows with errors are
+  skipped with a warning; bond files accept `coupon_pct`/`price_clean`
+  headers (and the old `coupon`/`price`), CRLF, BOM, quoted fields and
+  `N/A` prices; the residual file has the old `result.csv` columns.
+- `sim zcb`: `--seed` defaults to 1 (deterministic); the output has the
+  columns `t_years, curve_zero_cc_pct, curve_fwd_cc_pct, curve_discount,
+  model_discount, mc_discount, mc_stderr, mc_zero_cc_pct, z_score` (rates in
+  percent); the `theta` and `exp_short_rate` columns are only written by the
+  `holee` shim; Hull-White and Vasicek are available (`--model`).
+- `swap rate`: tenor list, fixed frequency and dual curve (`--fwd-curve`);
+  `par_rate_pct` is the annualised fixed-leg rate, the annuity is
+  `sum Z(t_i)/freq`.
+- `option price`: expiry as years, tenor or date; all Greeks including theta
+  and phi; implied volatility with `--implied-from`; curve (`--curve`) or flat
+  rate (`--rate`); invalid input exits 2.
+- Shims print the output of `fic` (text format) for `bonds-cli`,
+  `swaprate-cli` and `option-cli`; `termfit` (`nss_opt.json`,
+  `spline_opt.json`, `result.csv`), `fwdcrv` (`forward.csv`) and `holee`
+  (decimal CSV) keep their legacy files.
+- Scripts: `snb.zsh` writes the new curve schema (header-aware, latest
+  complete date), `six-bonds.zsh` writes the bond CSV (missing price = empty
+  field), `price-bonds.zsh` and `avg-spread.zsh` are thin wrappers of
+  `fic bond price` (duration-weighted average z-spread per issuer by column
+  name, rows with `status != ok` skipped); `scripts/test.zsh` tests them with
+  fixtures.
+- Samples: `data/` (SNB curve 2021-03-31, bonds 2021-11-26), regenerated
+  `cmds/termfit/result.csv` (new format) and `termfit.png`;
+  `data/bonds_2021-11-26.csv` is `cmds/termfit/bonddata.csv` in the new bond CSV format (the original stays for the
+  termfit shim and the `pkg/fit` tests).
+
 ## WP4: Monte Carlo (breaking)
 
 `pkg/mc` has been rewritten: a model is discretised on an explicit time

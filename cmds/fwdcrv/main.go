@@ -1,96 +1,14 @@
+// Command fwdcrv is DEPRECATED: it is a shim over the fic binary ("fic curve forward"; legacy forward.csv kept).
+// It keeps its old flags and prints a deprecation note to stderr; see the
+// README for the mapping of the old flags to fic.
 package main
 
 import (
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"math"
 	"os"
 
-	"github.com/konimarti/fixedincome/pkg/term"
-)
-
-var (
-	fileFlag = flag.String("f", "term.json", "json file containing the parameters for term structure")
-	maturity = flag.Float64("m", 1.0, "term maturity of forward rate in decimal years")
-	t        = flag.Float64("t", 0.0, "start time for forward rate in decimal years")
+	"github.com/konimarti/fixedincome/internal/cli"
 )
 
 func main() {
-	// read input files
-	flag.Parse()
-
-	// read term structure
-	termData, err := ioutil.ReadFile(*fileFlag)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error: reading term structure failed:", err)
-		os.Exit(1)
-	}
-
-	ts, _, err := term.Parse(termData)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: parsing term structure from %s failed: %v\n", *fileFlag, err)
-		os.Exit(1)
-	}
-	fmt.Fprintln(os.Stderr, "Term model read from", *fileFlag)
-
-	// term maturity
-	m := *maturity
-	if math.Abs(m) < 1e-16 {
-		panic("Term maturity too small")
-	}
-
-	// calculate
-	t1 := *t
-	if math.Abs(t1) > 1e-16 {
-
-		fmt.Println("Discount Factors and Forward Rate")
-		fmt.Println("")
-		fmt.Printf("Z(0,%4.2f)\t\t%3.4f\n", t1, ts.Discount(t1))
-		Ffac := ts.Discount(t1+m) / ts.Discount(t1)
-		fmt.Printf("F(0,%4.2f,%4.2f)\t\t%3.4f\n", t1, t1+m, Ffac)
-		fmt.Printf("Z(0,%4.2f)\t\t%3.4f\n", t1+m, ts.Discount(t1+m))
-		fmt.Println("------------------------------")
-		fmt.Printf("r(0,%4.2f)\t\t%3.4f%%\n", t1, ts.ZeroRate(t1)*100.0)
-		fmt.Printf("f(0,%4.2f,%4.2f)\t\t%3.4f%%\n", t1, t1+m, -math.Log(Ffac)/m*100.0)
-		fmt.Printf("r(0,%4.2f)\t\t%3.4f%%\n", t1+m, ts.ZeroRate(t1+m)*100.0)
-		fmt.Println("------------------------------")
-
-	}
-
-	output := [][]string{
-		{"x", "SpotRate", "FwdRate", "Z", "F"},
-	}
-
-	for i := 1; i <= 10*12; i++ {
-		t := float64(i) * 1.0 / 12.0
-
-		z := ts.Discount(t)
-		f := ts.Discount(t+m) / z
-
-		spot := -math.Log(z) / t * 100.0
-		fwd := -math.Log(f) / m * 100.0
-
-		output = append(output, []string{
-			fmt.Sprintf("%v", t),
-			fmt.Sprintf("%v", spot),
-			fmt.Sprintf("%v", fwd),
-			fmt.Sprintf("%v", z),
-			fmt.Sprintf("%v", f),
-		})
-
-	}
-
-	// write to file
-	name := "forward.csv"
-	fout, err := os.Create(name)
-	if err != nil {
-		log.Fatal("Unable to read output file:", name, err)
-	}
-	defer fout.Close()
-	w := csv.NewWriter(fout)
-	w.WriteAll(output) // calls Flush internally
-
+	os.Exit(cli.LegacyFwdcrv(os.Args[1:], os.Stdout, os.Stderr))
 }
