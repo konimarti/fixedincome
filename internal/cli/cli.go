@@ -86,6 +86,7 @@ type command struct {
 func commands() []command {
 	return []command{
 		{"curve fit", "fit a Nelson-Siegel-Svensson or spline curve to bond prices", buildCurveFit},
+		{"curve fetch", "fetch the NSS curve parameters of the SNB or the ECB", buildCurveFetch},
 		{"curve show", "zero rates, discount factors and forwards of a curve", buildCurveShow},
 		{"curve forward", "forward rates of a given tenor along a curve", buildCurveForward},
 		{"curve template", "print a template curve file", buildCurveTemplate},

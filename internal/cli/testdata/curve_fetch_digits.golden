@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "model": "nss",
+  "asof": "2024-05-02",
+  "currency": "CHF",
+  "source": "SNB rendopar",
+  "params": {
+    "b0": 3.14724,
+    "b1": 1.1,
+    "b2": -2.3,
+    "b3": 0.115659,
+    "t1": 2.5,
+    "t2": 9
+  },
+  "spread_bp": 0
+}

@@ -39,9 +39,12 @@ func parseDate(s string) (time.Time, error) {
 	return fit.ParseDate(s)
 }
 
+// clock returns the current time (replaced in tests).
+var clock = time.Now
+
 // today returns today's date (UTC midnight of the local calendar date).
 func today() time.Time {
-	n := time.Now()
+	n := clock()
 	return time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
 }
 

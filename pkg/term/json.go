@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -260,7 +261,10 @@ func parseLegacy(raw map[string]json.RawMessage) (Curve, error) {
 // Marshal returns the curve file (JSON, indented) of the curve c with the
 // metadata meta in the schema described at Parse. A z-spread applied with
 // WithSpread is written as "spread_bp". Supported are Flat, NSS and *Spline
-// curves (with or without spread); the curve is validated (an invalid NSS,
+// curves (with or without spread). All numbers of an NSS curve (betas in
+// percent and the decay parameters) are rounded to 14 significant digits
+// (relative difference <= 5e-14), so that parameters read from a file survive
+// the unit conversion unchanged. The curve is validated (an invalid NSS,
 // a non-finite rate or spread or a zero-value Spline is an error).
 func Marshal(c Curve, meta Meta) ([]byte, error) {
 	if c == nil {
@@ -281,8 +285,8 @@ func Marshal(c Curve, meta Meta) ([]byte, error) {
 		}
 		f.Model = ModelNSS
 		f.Params = map[string]float64{
-			"b0": b.B0 * 100, "b1": b.B1 * 100, "b2": b.B2 * 100, "b3": b.B3 * 100,
-			"t1": b.Tau1, "t2": b.Tau2,
+			"b0": pct(b.B0), "b1": pct(b.B1), "b2": pct(b.B2), "b3": pct(b.B3),
+			"t1": round14(b.Tau1), "t2": round14(b.Tau2),
 		}
 	case *NSS:
 		return Marshal(WithSpread(*b, s), meta)
@@ -305,4 +309,17 @@ func Marshal(c Curve, meta Meta) ([]byte, error) {
 		return nil, fmt.Errorf("term: cannot marshal curve of type %T", base)
 	}
 	return json.MarshalIndent(f, "", "  ")
+}
+
+// pct converts a decimal to percent, rounded like round14.
+func pct(x float64) float64 { return round14(x * 100) }
+
+// round14 rounds x to 14 significant digits so that published parameters
+// survive the conversion to percent (3.14724 and not 3.1472399999999996).
+func round14(x float64) float64 {
+	v, err := strconv.ParseFloat(strconv.FormatFloat(x, 'g', 14, 64), 64)
+	if err != nil {
+		return x
+	}
+	return v
 }

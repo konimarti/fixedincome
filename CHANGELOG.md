@@ -1,5 +1,35 @@
 # Changelog
 
+## WP6: fetch yield-curve parameters from central banks
+
+- New command `fic curve fetch --source snb|ecb [--date D|latest] [--file FILE|-] [--ecb-issuers aaa|all]
+  [--max-age DAYS] [--timeout 30s] [--spread BP] [-o FILE]`: writes the published NSS parameters as a curve file
+  (SNB: CHF, `SNB rendopar`; ECB: EUR, `ECB AAA` / `ECB all issuers`). A warning on stderr if the latest available
+  as-of date is older than `--max-age` days (default 14, 0 disables): the SNB cube `rendopar` ends on 2025-07-31.
+- New public package `pkg/source`: `ParseSNB`, `ParseECB` (offline, any `io.Reader`) and `Client` with `FetchSNB`,
+  `FetchECB`. It is the only package with network access. Parsers find columns by name, accept BOM, CRLF,
+  lower and upper case codes and a preamble, reject duplicates and non-numeric values with the line number.
+  The client has a timeout, a size limit, https-only redirects and a User-Agent. SNB downloads are restricted with
+  `fromDate`/`toDate` (supported by the SNB API), ECB with `startPeriod`/`endPeriod`/`lastNObservations`.
+  The ECB parameters are validated against the ECB spot rates SR_1Y/SR_5Y/SR_10Y (agreement 1e-10 percent).
+- `scripts/snb.zsh` is now a deprecated wrapper of `fic curve fetch --source snb` (same options `-f`, `-o`);
+  `scripts/lib/snb.awk` is removed. The SNB codes are lower case in the live file (`b0`..`t2`); both cases work.
+- `term.Marshal` rounds all NSS numbers (betas in percent and the decay parameters) to 14 significant digits
+  (3.14724 instead of 3.1472399999999996). This affects curve files written by `fic curve fit` as well;
+  differences are <= 5e-14 relative.
+- Robustness: `ParseECB` rejects files that mix several values of INSTRUMENT_FM, CURRENCY or REF_AREA (and
+  non-EUR data); numbers must be plain decimals (no hex floats, underscores, Inf); |beta| > 1000 percent or
+  tau > 1000 years is an error, |beta| > 100 or tau > 100 a warning. `Curve.Notes` reports a skipped newer
+  incomplete date (`skipped newer incomplete date X (missing t2)`). Errors show host and path, not the query.
+- `fic curve fetch --strict`: with `latest`, exit 1 and no output if the as-of is older than `--max-age` days
+  (default: warn only). The stderr summary carries `[STALE: N days]` then. Warnings and the summary are printed
+  only after the output was written. `--spread` is limited to +-100000 bp. With `--file` the stale warning says
+  `data in FILE is from DATE (N days old)`.
+- `scripts/snb.zsh`: the `source` of the written curve changed from `SNB` to `SNB rendopar`, and the file has
+  `"version": 1`; the script exits 1 if `fic` is not found and 2 for `-f ""`.
+- Network notes: no retries, `Retry-After` is not honoured, proxies from the environment are used, https
+  redirects to other hosts are followed (at most 5).
+
 ## WP5: unified CLI, scripts, R
 
 One binary `fic` (`cmds/fic`, implementation in `internal/cli`) replaces the

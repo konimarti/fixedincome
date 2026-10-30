@@ -1,0 +1,2 @@
+fic curve fetch: warning: data in ../../scripts/testdata/snb_live_sample.csv is from 2025-07-31 (456 days old)
+fic curve fetch: SNB rendopar, as of 2025-07-31 [STALE: 456 days], CHF: zero rate (cc) 1y -0.0958%, 5y 0.0775%, 10y 0.3773%

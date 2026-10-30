@@ -25,6 +25,16 @@ check "snb asof" "$(grep -o '"asof": "[^"]*"' $tmp/snb.json)" '"asof": "2021-03-
 check "snb curve loads" "$($FIC curve show --curve $tmp/snb.json --t 10y --format csv | tail -1 | cut -d, -f1,2)" "10,-0.267259555"
 check "snb equals data curve" "$($FIC curve show --curve $tmp/snb.json --t 1y,5y --format csv)" "$($FIC curve show --curve $curve --t 1y,5y --format csv)"
 $here/snb.zsh -f /dev/null 2>/dev/null; check "snb empty input fails" $? 1
+$here/snb.zsh -f "" 2>/dev/null; check "snb empty -f is a usage error" $? 2
+FIC=/nonexistent/fic $here/snb.zsh -f $here/testdata/snb_live_sample.csv >/dev/null 2>$tmp/nofic; check "snb without fic exits 1" $? 1
+check "snb without fic message" "$(grep -c 'fic not found; build it with' $tmp/nofic)" 1
+check "snb deprecation note" "$($here/snb.zsh -f $here/testdata/snb_rendopar.csv 2>&1 >/dev/null | grep -c deprecated)" 1
+# live format of data.snb.ch: BOM, CRLF, lowercase codes, latest complete date
+$here/snb.zsh -f $here/testdata/snb_live_sample.csv -o $tmp/live.json 2>/dev/null
+check "snb live sample exit" $? 0
+check "snb live sample asof" "$(grep -o '"asof": "[^"]*"' $tmp/live.json)" '"asof": "2025-07-31"'
+check "snb live sample b3 in percent" "$(grep -o '"b3": [^,]*' $tmp/live.json)" '"b3": 3.14724'
+check "snb live sample stdin" "$($here/snb.zsh -f - < $here/testdata/snb_live_sample.csv 2>/dev/null | grep -c '"currency": "CHF"')" 1
 
 # six-bonds.zsh: bond CSV, missing price is an empty field
 $here/six-bonds.zsh -f $here/testdata/six_ref.csv > $tmp/six.csv

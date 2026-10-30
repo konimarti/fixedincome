@@ -157,3 +157,26 @@ func TestParse_Concurrent(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestMarshalRounding(t *testing.T) {
+	// the published SNB values survive the decimal round trip exactly
+	n, err := term.NewNSS(0.000347105, -0.000981406, -0.0187828, 0.0314724, 3.51767, 8.23272)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := term.Marshal(n, term.Meta{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"b0": 0.0347105`, `"b1": -0.0981406`, `"b2": -1.87828`, `"b3": 3.14724`, `"t1": 3.51767`, `"t2": 8.23272`} {
+		if !strings.Contains(string(data), want) {
+			t.Errorf("missing %s in\n%s", want, data)
+		}
+	}
+	// full-precision taus are rounded as well (14 significant digits)
+	n.Tau1 = 1.0199921835123456789
+	data, _ = term.Marshal(n, term.Meta{})
+	if !strings.Contains(string(data), `"t1": 1.0199921835123`) || strings.Contains(string(data), "1.01999218351234") {
+		t.Errorf("tau not rounded:\n%s", data)
+	}
+}

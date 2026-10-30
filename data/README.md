@@ -7,12 +7,17 @@ Small fixtures for the examples, the tests (`internal/cli`) and the scripts.
 | `curve_snb_2021-03-31.json` | Nelson-Siegel-Svensson curve of the Swiss National Bank (CHF risk-free spot rates) as of 2021-03-31 | parameters published by the SNB ([data.snb.ch](https://data.snb.ch/en/topics/ziredev#!/cube/rendopar)), written with `fic curve template` |
 | `bonds_2021-11-26.csv` | 39 CHF bonds (money market bills and Swiss Confederation bonds) with the clean prices of 2021-11-26 | `cmds/termfit/bonddata.csv` in the new format (ISINs/valor numbers in `id`); dates normalised to ISO, columns renamed |
 
+Test fixtures of the downloads (SNB cube `rendopar` as of 2025-07-29..31, ECB AAA parameters and spot rates of
+2026-10-27..29, as downloaded on 2026-10-30) are in `pkg/source/testdata/` and `scripts/testdata/`. Fresh curve
+files: `fic curve fetch --source snb|ecb` (see the README, including the note that the SNB cube is no longer
+updated).
+
 ## Curve file (JSON)
 
 Rates and betas in percent, spread in basis points, maturities and decay
 parameters in years. `model` is `nss`, `spline` (`knots`, `discount_factors`
 instead of `params`) or `flat` (`params: {"r": 1.0}`); `asof`, `currency`,
-`source` and `version` are optional. `fic curve fit` writes this format
+`source` and `version` are optional. `fic curve fit` and `fic curve fetch` write this format
 (`source` is the bond file), `fic curve template` prints examples.
 
 ```json

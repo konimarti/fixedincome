@@ -92,7 +92,7 @@ prices: `fit.ReadBondsCSV`, `fit.PrepareBonds`, `fit.FitNSS`, `fit.FitSpline` (s
 ## The `fic` command
 
 ```
-fic curve fit | show | forward | template     fic bond price     fic swap rate     fic option price     fic sim zcb
+fic curve fetch | fit | show | forward | template     fic bond price     fic swap rate     fic option price     fic sim zcb
 fic version        fic help [command]
 ```
 
@@ -115,6 +115,7 @@ Flags work with one or two dashes (`--curve` is documented). `fic help <command>
 
 | Command | Flags (units) |
 |---|---|
+| `fic curve fetch` | `--source snb\|ecb` (required), `--date D\|latest` (default latest = the latest date with all six parameters), `--file FILE\|-` (parse a downloaded file, no network), `--ecb-issuers aaa\|all` (default aaa), `--max-age DAYS` (default 14; warn if the latest parameters are older, 0 = never), `--strict` (with `latest`: exit 1 and write no output if the data is older than `--max-age`), `--timeout 30s`, `--spread BP` (written as `spread_bp`, at most 100000 in absolute value), `-o FILE` (curve JSON, default stdout). Downloads the published NSS parameters (SNB: CHF, source `SNB rendopar`; ECB: EUR, `ECB AAA` or `ECB all issuers`) and writes a curve file with `asof`, `currency` and `source`; after the output was written, stderr gets warnings and a summary with the 1y/5y/10y zero rates (tagged `[STALE: N days]` when the data is older than `--max-age`). `--ecb-issuers` given explicitly must match the variant of a `--file`; files that mix several instruments, currencies or areas are rejected. Exit 1 for network or data errors (also a `--date` without a complete parameter set: the error names the nearest earlier date) |
 | `fic curve fit` | `--bonds FILE\|-` (bond CSV), `--date D` (`YYYY-MM-DD` or `DD.MM.YYYY`, default today), `--model nss\|spline\|both` (default nss; `both` needs `-o` and writes `<stem>.nss.json`, `<stem>.spline.json`), `--onrate PCT` (overnight rate, simple ACT/360; constrains the short end), `--start CURVE` (NSS starting point), `--min-ttm Y` (default 0.1; <= 0 keeps all), `--lambda X\|gcv`, `--objective yield\|price`, `--huber BP`, `--settle-lag DAYS`, `-o FILE` (curve JSON, default stdout), `--residuals FILE` (per-bond CSV). The `asof` of the curve is the settlement date; `source` the bond file. Warnings of the fit go to stderr |
 | `fic curve show` | `--curve`, `--grid start:end:step` (default `1m:10y:1m`) or `--t 1y,2y,5y`, `--spread BP`, `--format`, `-o`. Columns `t_years, zero_cc_pct, zero_annual_pct, discount_factor, inst_fwd_cc_pct` |
 | `fic curve forward` | as `show` plus `--tenor 1y`. Columns `t_years, tenor_years, zero_cc_pct, discount_factor, fwd_cc_pct, fwd_annual_pct, fwd_discount_factor` |
@@ -195,14 +196,16 @@ coupon in percent, price in percent of face, missing price = empty field.
 
 ### Pipeline example
 
-This runs literally from a fresh checkout without network (the `-f` fixtures replace the downloads; online use
-`scripts/snb.zsh -o curve.json` and `scripts/six-bonds.zsh Glarner > bonds.csv`). The scripts call `fic` from the
-`PATH` (or `$FIC`).
+This runs literally from a fresh checkout without network (the `--file` and `-f` fixtures replace the downloads).
+Online, step 1 is `fic curve fetch --source snb -o curve.json` (CHF) or `fic curve fetch --source ecb -o curve.json`
+(EUR), and `scripts/six-bonds.zsh Glarner > bonds.csv` for the bonds. The scripts call `fic` from the `PATH` (or
+`$FIC`).
 
 ```sh
 go build -o fic ./cmds/fic && export PATH="$PWD:$PATH"
-# 1. a curve file in the new schema from the SNB CSV (header-aware, latest complete date)
-scripts/snb.zsh -f scripts/testdata/snb_rendopar.csv -o curve.json
+# 1. a curve file from a downloaded SNB CSV (latest complete date; warns on stderr that the data is old);
+#    online: fic curve fetch --source snb   or   fic curve fetch --source ecb
+fic curve fetch --source snb --file scripts/testdata/snb_live_sample.csv -o curve.json
 # 2. bonds in the bond CSV format (missing prices stay empty)
 scripts/six-bonds.zsh -f scripts/testdata/six_ref.csv > bonds.csv
 # 3. fit curves to bonds (NSS and spline, written to fit.nss.json and fit.spline.json) and keep the residuals;
@@ -264,8 +267,18 @@ print `deprecated: use "fic ..."` to stderr.
 Many central banks publish daily fitted parameters of the Nelson-Siegel-Svensson model:
 
 - Swiss National Bank (SNB) for [CHF risk-free spot rates](https://data.snb.ch/en/topics/ziredev#!/cube/rendopar)
-  (`scripts/snb.zsh`)
+  (cube `rendopar`, `fic curve fetch --source snb`)
 - European Central Bank (ECB) for [EUR risk-free spot rates](https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_area_yield_curves/html/index.en.html)
+  (AAA-rated and all euro area government bonds, `fic curve fetch --source ecb`)
+
+`fic curve fetch` (library: `pkg/source`, the only package that uses the network) downloads these parameters; both
+banks publish betas in percent and taus in years, the curve file schema. **Data freshness:** at the time of writing
+(October 2026) the SNB cube `rendopar` ends on 2025-07-31 (publishing date 2025-09-01), so `--source snb` returns
+that date and warns when it is older than `--max-age` days (`--strict` makes this an error, exit 1, no output); use `--source ecb` for current data. A newer date with missing parameters is skipped with a warning. The as-of date
+defaults to the latest date with all six parameters; an explicit `--date` without a complete set is an error that
+names the nearest earlier date (the ECB publishes on TARGET business days). Data terms of use:
+[SNB data portal](https://data.snb.ch), [ECB statistics usage policy](https://www.ecb.europa.eu/stats/ecb_statistics/governance_and_quality_framework/html/usage_policy.en.html);
+check them before redistributing the data. Network behaviour: one request per call, no retries, `Retry-After` is not honoured, proxies from the environment (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) are used, redirects must be https and are followed across hosts (at most 5), responses are limited to 64 MiB. `scripts/snb.zsh` is a deprecated wrapper of `fic curve fetch --source snb`.
 
 Further reading: [Nelson-Siegel-Svensson model at SNB](https://www.snb.ch/de/mmr/reference/quartbul_2002_2_komplett/source/quartbul_2002_2_komplett.de.pdf) (page 64).
 
