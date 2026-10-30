@@ -7,13 +7,13 @@
 #   price-bonds.zsh [-c curve.json] [-d YYYY-MM-DD] [-s SPREAD_BP] [bonds.csv]
 #
 #   bonds.csv  bond CSV (see "fic help bond price"; default: stdin), e.g. the
-#              output of six-bonds.zsh
+#              output of "fic bond fetch --source six"
 #   -c FILE    curve file (default: $FIC_CURVE or ./curve.json)
 #   -d DATE    valuation date (default: asof date of the curve, else today)
 #   -s BP      z-spread in bp added to the curve
 #   -f FORMAT  text (default), csv or json
 #
-# Example: six-bonds.zsh Glarner | price-bonds.zsh -c curve.json
+# Example: fic bond fetch --source six --issuer Glarner | price-bonds.zsh -c curve.json
 # The exit code is that of fic (1 only if all rows failed).
 
 set -u

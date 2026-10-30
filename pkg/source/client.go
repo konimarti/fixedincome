@@ -57,6 +57,8 @@ type Client struct {
 	// BaseSNB and BaseECB are the endpoints (defaults DefaultBaseSNB and
 	// DefaultBaseECB); overridable for tests.
 	BaseSNB, BaseECB string
+	// BaseSIX is the SIX reference data endpoint (default DefaultBaseSIX).
+	BaseSIX string
 	// UserAgent is sent with each request (default DefaultUserAgent).
 	UserAgent string
 	// MaxBytes limits the size of a response body (default 64 MiB); a larger

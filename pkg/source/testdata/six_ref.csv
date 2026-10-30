@@ -1,0 +1,12 @@
+ISIN;IssuerNameShort;CompositeRating;MaturityDate;CouponRate;ClosingPrice;InterestFrequencyCode;AccruedInterestCalcCode;AccruedInterestCalcDesc;GuaranteeTypeDesc;Currency;TradingBaseCurrency
+CH0000000001;Zürcher Kantonalbank;AAA;20290515;1.5;101.25;1;A013;Eurobond basis model 3;No particular guarantee;CHF;CHF
+CH0000000002;Glarner Kantonalbank;AA;20280509;1.95;102.05;1;A013;Eurobond basis model 3;No particular guarantee;CHF;CHF
+CH0000000003;Perpetual Bank;AA;99991231;3;100;1;A013;Eurobond basis model 3;No particular guarantee;CHF;CHF
+CH0000000004;Flat Corp;BBB;20310101;2;99;1;A000;No accrued interest (flat);No particular guarantee;CHF;CHF
+CH0000000005;Odd Frequency AG;A;20300101;2;99;Y;A013;Eurobond basis model 3;No particular guarantee;CHF;CHF
+CH0000000006;Unrated Co;;20320630;0.5;98.5;2;A011;30/360 (ICMA);No particular guarantee;CHF;CHF
+CH0000000007;Zero Price AG;AA;20330101;1;0;4;A004;Actual/360;State Guarantee;CHF;CHF
+CH0000000008;"Bank ""X""; AG";AAA;20271231;2.25;100.5;1;A001;30/360 (ISDA);No particular guarantee;CHF;CHF
+CH0000000009;Unknown Code AG;A;20340101;1;97;1;A099;Something new;No particular guarantee;CHF;CHF
+CH0000000010;Euro Issuer;AAA;20300101;1;97;1;A013;Eurobond basis model 3;No particular guarantee;EUR;CHF
+CH0000000011;Glarner Kantonalbank;AA;20280509;0;;1;A013;Eurobond basis model 3;No particular guarantee;CHF;CHF

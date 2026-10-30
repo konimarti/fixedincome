@@ -36,18 +36,33 @@ check "snb live sample asof" "$(grep -o '"asof": "[^"]*"' $tmp/live.json)" '"aso
 check "snb live sample b3 in percent" "$(grep -o '"b3": [^,]*' $tmp/live.json)" '"b3": 3.14724'
 check "snb live sample stdin" "$($here/snb.zsh -f - < $here/testdata/snb_live_sample.csv 2>/dev/null | grep -c '"currency": "CHF"')" 1
 
-# six-bonds.zsh: bond CSV, missing price is an empty field
-$here/six-bonds.zsh -f $here/testdata/six_ref.csv > $tmp/six.csv
-check "six header" "$(head -1 $tmp/six.csv)" "maturity,coupon_pct,price_clean,id,issuer"
-check "six dates" "$(sed -n 2p $tmp/six.csv)" "2026-05-25,1.25,109.70,CH0224396983,Glarner KB"
-check "six empty price" "$(sed -n 3p $tmp/six.csv)" "2030-01-15,0.5,,CH0001,Glarner KB"
-check "six zero price is empty" "$(sed -n 4p $tmp/six.csv)" '2029-03-31,0,,CH0002,"Glarner, KB"'
-check "six N/A coupon is empty" "$(sed -n 5p $tmp/six.csv)" "2031-06-30,,101.5,CH0003,Other KB"
+# six-bonds.zsh (deprecated wrapper of "fic bond fetch --source six"): bond CSV,
+# missing price is an empty field; the old fixture has no freq / day count /
+# rating columns, those fields stay empty; the row with the coupon N/A is skipped
+$here/six-bonds.zsh -f $here/testdata/six_ref.csv > $tmp/six.csv 2>$tmp/six.err
+check "six exit" $? 0
+check "six deprecation note" "$(grep -c 'deprecated, use: fic bond fetch --source six' $tmp/six.err)" 1
+check "six invalid coupon is reported" "$(grep -c 'invalid coupon' $tmp/six.err)" 1
+check "six header" "$(head -1 $tmp/six.csv)" "maturity,coupon_pct,price_clean,id,freq,daycount,issuer,rating"
+check "six rows" "$(wc -l < $tmp/six.csv | tr -d ' ')" 6
+check "six dates" "$(sed -n 2p $tmp/six.csv)" "2023-01-01,2,100.5,CH0005,,,Other KB,"
+check "six empty price" "$(grep CH0001 $tmp/six.csv)" "2030-01-15,0.5,,CH0001,,,Glarner KB,"
+check "six zero price is empty" "$(grep CH0002 $tmp/six.csv)" '2029-03-31,0,,CH0002,,,"Glarner, KB",'
+check "six stdin" "$($here/six-bonds.zsh -f - < $here/testdata/six_ref.csv 2>/dev/null | wc -l | tr -d ' ')" 6
+check "six issuer filter on a file" "$($here/six-bonds.zsh -f $here/testdata/six_ref.csv glarner 2>/dev/null | tail -n +2 | cut -d, -f4 | tr '\n' ' ')" "CH0224396983 CH0002 CH0001 "
+$here/six-bonds.zsh -f $here/testdata/snb_rendopar.csv >/dev/null 2>&1; check "six wrong file fails" $? 1
+$here/six-bonds.zsh -f "" 2>/dev/null; check "six empty -f is a usage error" $? 2
+$here/six-bonds.zsh a b 2>/dev/null; check "six two issuers is a usage error" $? 2
+FIC=/nonexistent/fic $here/six-bonds.zsh -f $here/testdata/six_ref.csv >/dev/null 2>$tmp/nofic; check "six without fic exits 1" $? 1
+# the new fixture of the library: freq, day count and rating columns
+$here/six-bonds.zsh -f $here/../pkg/source/testdata/six_ref.csv > $tmp/six2.csv 2>/dev/null
+check "six full fixture" "$(sed -n 2p $tmp/six2.csv)" '2027-12-31,2.25,100.5,CH0000000008,1,BONDBASIS,"Bank ""X""; AG",AAA'
+check "six full fixture rows" "$(wc -l < $tmp/six2.csv | tr -d ' ')" 7
 
 # price-bonds.zsh: failing rows do not abort, the exit code is 0 unless all fail
 out=$($here/price-bonds.zsh -c $curve -d 2021-03-31 -f csv $tmp/six.csv 2>/dev/null)
 check "price-bonds exit" $? 0
-check "price-bonds rows" "$(print -r -- "$out" | wc -l | tr -d ' ')" 7
+check "price-bonds rows" "$(print -r -- "$out" | wc -l | tr -d ' ')" 6
 check "price-bonds ok rows (missing price: valued on the curve)" "$(print -r -- "$out" | grep -c ',ok$')" 5
 check "price-bonds model rows" "$(print -r -- "$out" | grep -c ',model,')" 2
 check "price-bonds text format" "$($here/price-bonds.zsh -c $curve -d 2021-03-31 $tmp/six.csv 2>/dev/null | head -1 | awk '{print $1, $NF}')" "id status"

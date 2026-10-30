@@ -75,6 +75,14 @@ fic bond price --curve curve.json --in bonds.csv --format csv > priced.csv
 fic bond price --curve curve.json --in bonds.csv --group-by issuer   # duration-weighted z-spread per issuer
 ```
 
+**Fit a curve to the CHF bonds of an issuer, by rating**
+
+```sh
+fic bond fetch --source six --issuer Glarner --rating AAA,AA -o bonds.csv    # SIX Swiss Exchange, delayed prices
+fic curve fit --bonds bonds.csv --date 2026-10-30 --model nss -o fit.json
+fic bond price --curve fit.json --in bonds.csv --group-by rating            # z-spread and duration per rating
+```
+
 **Par swap rates, option prices and short-rate simulation**
 
 ```sh

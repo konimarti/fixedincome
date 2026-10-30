@@ -33,6 +33,7 @@ Flags work with one or two dashes (`--curve` is documented). `fic help <command>
 | `fic curve show` | `--curve`, `--grid start:end:step` (default `1m:10y:1m`) or `--t 1y,2y,5y`, `--spread BP`, `--format`, `-o`. Columns `t_years, zero_cc_pct, zero_annual_pct, discount_factor, inst_fwd_cc_pct` |
 | `fic curve forward` | as `show` plus `--tenor 1y`. Columns `t_years, tenor_years, zero_cc_pct, discount_factor, fwd_cc_pct, fwd_annual_pct, fwd_discount_factor` |
 | `fic curve template` | `--model nss\|spline\|flat`, `-o`: a valid curve file |
+| `fic bond fetch` | `--source six` (required), `--issuer NAME` (case-insensitive substring of the short issuer name; `*`, `\|` and control characters are a usage error), `--rating AAA,AA,...` (exact composite ratings, default all incl. unrated), `--currency CHF` (trading currency, three upper-case letters), `--file FILE\|-` (parse a downloaded SIX CSV, no network; the filters are applied to it), `--timeout 30s`, `--format csv`, `-o FILE` (default stdout, atomic). Writes the bond CSV `maturity,coupon_pct,price_clean,id,freq,daycount,issuer,rating` sorted by maturity, then ISIN; see "SIX bond data" below. Exit 2 for usage errors, 1 for network or format errors and when no usable bond is left (the message names the filters) |
 | `fic bond price` | `--curve`, `--date`, `--spread BP`, `--maturity D\|5y`, `--coupon PCT`, `--freq 1\|2\|3\|4\|6\|12` (default 1), `--daycount 30E360\|EUROBOND\|BONDBASIS\|ACT360\|ACTACT`, `--face 100`, `--redemption` (default: the face value), one of `--price CLEAN` (percent of face) or `--yield PCT` (cc), or `--in FILE\|-` for a bond CSV (batch), with `--in`: `--group-by issuer\|freq\|daycount` (one row per group, see below) |
 | `fic swap rate` | `--curve`, `--fwd-curve FILE` (forecast curve of the floating leg, default the same curve), `--tenors 2y,3y,...,10y`, `--freq 2`, `--spread BP` (on the discount curve). Swaps start at the curve date, so par rates do not depend on a valuation date and `swap rate` has no `--date` flag. Columns `tenor, tenor_years, freq, par_rate_pct, annuity` |
 | `fic option price` | `--type call\|put`, `--spot S`, `--strike K`, `--expiry 2y\|2.5\|DATE` (a date `YYYY-MM-DD` / `DD.MM.YYYY` is relative to `--date`), `--vol PCT` or `--implied-from PRICE`, `--rate PCT` or `--curve FILE` (zero rate at the expiry), `--div PCT`, `--date`. Columns `type, spot, strike, expiry_years, vol_pct, rate_cc_pct, div_pct, price, delta, gamma, vega_per_volpt, theta_per_day, rho_per_pct, phi_per_pct` |
@@ -93,8 +94,8 @@ spread_total_bp, mod_duration, convexity, dv01, status`.
   the ids of the first ones.
 
 **`fic bond price --in FILE --group-by COLUMN`, groups.** Instead of one row per bond the output has one row per
-value of `COLUMN` (`issuer`, `freq` or `daycount`; anything else is a usage error, exit 2; `issuer` needs an
-`issuer` column in the file, else exit 1; an empty issuer is the group `unknown`). Only rows with `status` `ok` and a
+value of `COLUMN` (`issuer`, `rating`, `freq` or `daycount`; anything else is a usage error, exit 2; `issuer` and
+`rating` need such a column in the file, else exit 1; an empty issuer or rating is the group `unknown`). Only rows with `status` `ok` and a
 market price (`price_source` = `market`) are used; the number of the other rows is reported on stderr. Columns
 `<COLUMN>, n, avg_zspread_bp, avg_mod_duration, dv01_sum`, sorted by `avg_zspread_bp`:
 
@@ -122,14 +123,51 @@ with `params: {"r": ...}`; a file without `model` is an error, `fic curve templa
  "spread_bp": 0}
 ```
 
-Bond file (CSV, see [data/README.md](../data/README.md)): `maturity,coupon_pct,price_clean[,id,freq,daycount,face,redemption,issuer]`,
+Bond file (CSV, see [data/README.md](../data/README.md)): `maturity,coupon_pct,price_clean[,id,freq,daycount,face,redemption,issuer,rating]`,
 coupon in percent, price in percent of face, missing price = empty field.
+
+## SIX bond data
+
+`fic bond fetch --source six` queries the public reference data service of SIX Swiss Exchange
+(`https://www.six-group.com/fqs/ref.csv`, no login) for the bonds of the segment BO (exchange traded bonds) in the
+trading currency `--currency`, optionally restricted to an issuer and to ratings, and writes a bond CSV for
+`fic curve fit --bonds` and `fic bond price --in`.
+
+- **Query.** `where` is `PortalSegment=BO*TradingBaseCurrency=CCY[*IssuerNameShort_~NAME][*CompositeRating=R1|R2]`
+  (`_~` is a case-insensitive substring match, `=` an exact match, `|` separates alternative values, `*` joins terms,
+  which is why `*` and `|` are refused in `--issuer`). The service expects ISO 8859-1: an umlaut in `--issuer` is
+  sent as the Latin-1 byte (characters outside Latin-1 are a usage error). Without `--issuer` and `--rating` the
+  query returns all bonds of the currency (about 2500 for CHF).
+- **Response.** `text/csv` in ISO 8859-1, separated by `;`, with a header; it is converted to UTF-8 (a `--file`
+  that is valid UTF-8 is used as is). Quoting is strict: a quote inside an unquoted field, an unterminated quote or a
+  row with a different number of fields is an error. Anything that is not a CSV with the columns `MaturityDate`,
+  `CouponRate` and `ClosingPrice` (for example the HTML page "Bad request ... Invalid name 'X'") is an error that
+  shows a short excerpt. Limits as for the other downloads: `--timeout` (default 30 s), 64 MiB, redirects to https only.
+- **Columns written.** `maturity` (ISO date), `coupon_pct`, `price_clean` (the delayed closing price in percent of
+  face; empty if the price is missing or 0), `id` (ISIN), `freq`, `daycount`, `issuer`, `rating` (empty if unrated).
+  Columns of a `--file` that are absent leave the fields empty (`freq`, `daycount` then fall back to the `fic bond
+  price` defaults); this is how files with only `MaturityDate`, `CouponRate` and `ClosingPrice` work.
+- **Mappings.** `freq` from `InterestFrequencyCode`: 1, 2 and 4 are coupons per year; other codes (observed `Y`, `Z`)
+  are unsupported. `daycount` from `AccruedInterestCalcCode`: `A011` (30/360 ICMA) and `A013` (Eurobond basis
+  model 3) are `EUROBOND`, `A001` (30/360 ISDA) is `BONDBASIS`, `A004` (Actual/360) is `ACT360`. `A000` (no accrued
+  interest, flat) and unknown codes are unsupported.
+- **Skipped rows.** Rows with an unsupported frequency or day count code, perpetual bonds (`MaturityDate`
+  `99991231`) and rows with an invalid maturity, coupon or price are not written; stderr gets one warning per reason
+  with the count. With `--file` the filters `--issuer`, `--rating` and `--currency` are applied to the rows first.
+- **Summary** on stderr: bonds written, skipped rows, count by rating, price coverage. The prices are **delayed
+  closing prices**, not tradable quotes, and many bonds trade rarely; check the fit warnings for outliers.
+- **Terms of use.** The data is subject to the terms of SIX
+  (<https://www.six-group.com/en/products-services/the-swiss-stock-exchange/market-data/news-tools/terms-conditions.html>,
+  not verified here); check them before redistributing the data.
+- **Migration from `scripts/six-bonds.zsh`.** The script is a deprecated wrapper of this command (`-f FILE` and the
+  `ISSUER` argument, default `Glarner`, are kept). The columns changed from `maturity,coupon_pct,price_clean,id,issuer`
+  to the list above.
 
 ## Pipeline example
 
 This runs literally from a fresh checkout without network (the `--file` and `-f` fixtures replace the downloads).
 Online, step 1 is `fic curve fetch --source snb -o curve.json` (CHF) or `fic curve fetch --source ecb -o curve.json`
-(EUR), and `scripts/six-bonds.zsh Glarner > bonds.csv` for the bonds. The scripts call `fic` from the `PATH` (or
+(EUR), and `fic bond fetch --source six --issuer Glarner -o bonds.csv` for the bonds. The scripts call `fic` from the `PATH` (or
 `$FIC`).
 
 ```sh
@@ -138,7 +176,7 @@ go build -o fic ./cmds/fic && export PATH="$PWD:$PATH"
 #    online: fic curve fetch --source snb   or   fic curve fetch --source ecb
 fic curve fetch --source snb --file scripts/testdata/snb_live_sample.csv -o curve.json
 # 2. bonds in the bond CSV format (missing prices stay empty)
-scripts/six-bonds.zsh -f scripts/testdata/six_ref.csv > bonds.csv
+fic bond fetch --source six --file pkg/source/testdata/six_ref.csv -o bonds.csv
 # 3. fit curves to bonds (NSS and spline, written to fit.nss.json and fit.spline.json) and keep the residuals;
 #    warnings and the RMSE go to stderr
 fic curve fit --bonds data/bonds_2021-11-26.csv --date 2021-11-26 --onrate -0.75 --model both \

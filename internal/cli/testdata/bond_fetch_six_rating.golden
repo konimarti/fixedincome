@@ -1,0 +1,6 @@
+maturity,coupon_pct,price_clean,id,freq,daycount,issuer,rating
+2027-12-31,2.25,100.5,CH0000000008,1,BONDBASIS,"Bank ""X""; AG",AAA
+2028-05-09,1.95,102.05,CH0000000002,1,EUROBOND,Glarner Kantonalbank,AA
+2028-05-09,0,,CH0000000011,1,EUROBOND,Glarner Kantonalbank,AA
+2029-05-15,1.5,101.25,CH0000000001,1,EUROBOND,Zürcher Kantonalbank,AAA
+2033-01-01,1,,CH0000000007,4,ACT360,Zero Price AG,AA

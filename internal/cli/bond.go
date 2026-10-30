@@ -159,8 +159,8 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 	face := fs.Float64("face", 100, "face value")
 	price := fs.Float64("price", math.NaN(), "quoted clean price in percent of face (yields and z-spread are implied from it)")
 	yield := fs.Float64("yield", math.NaN(), "continuously compounded yield in percent (the price is computed from it)")
-	in := fs.String("in", "", "batch mode: CSV file with the bonds (- for stdin); columns maturity,coupon_pct,price_clean[,id,freq,daycount,face,redemption,issuer]")
-	groupBy := fs.String("group-by", "", "with --in: one row per group of the column issuer|freq|daycount instead of one per bond (n, duration-weighted z-spread, mean duration, DV01 sum)")
+	in := fs.String("in", "", "batch mode: CSV file with the bonds (- for stdin); columns maturity,coupon_pct,price_clean[,id,freq,daycount,face,redemption,issuer,rating]")
+	groupBy := fs.String("group-by", "", "with --in: one row per group of the column issuer|rating|freq|daycount instead of one per bond (n, duration-weighted z-spread, mean duration, DV01 sum)")
 	return fs, func() error {
 		set := setFlags(fs)
 		if *in != "" {
@@ -176,7 +176,7 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 			}
 			*groupBy = strings.ToLower(strings.TrimSpace(*groupBy))
 			if !groupColumns[*groupBy] {
-				return usagef("invalid --group-by %q (issuer, freq, daycount)", *groupBy)
+				return usagef("invalid --group-by %q (issuer, rating, freq, daycount)", *groupBy)
 			}
 		}
 		if set["price"] && set["yield"] {
@@ -275,10 +275,13 @@ type bondDefaults struct {
 }
 
 // bondTableCols are the columns of the batch output.
-func bondTableCols(withIssuer bool) []string {
+func bondTableCols(withIssuer, withRating bool) []string {
 	cols := []string{"id"}
 	if withIssuer {
 		cols = append(cols, "issuer")
+	}
+	if withRating {
+		cols = append(cols, "rating")
 	}
 	return append(cols, "maturity", "coupon_pct", "freq", "daycount", "ttm_years", "accrued", "price_source",
 		"price_clean", "price_dirty", "price_clean_model", "yield_cc_pct", "yield_annual_pct", "zspread_bp",
@@ -286,7 +289,7 @@ func bondTableCols(withIssuer bool) []string {
 }
 
 // groupColumns are the columns of the batch output that --group-by accepts.
-var groupColumns = map[string]bool{"issuer": true, "freq": true, "daycount": true}
+var groupColumns = map[string]bool{"issuer": true, "rating": true, "freq": true, "daycount": true}
 
 // groupStats aggregates the bonds with a market price per group: the
 // z-spread is the duration-weighted average (sum(z*d) / sum(d)), the
@@ -368,6 +371,9 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 	if groupBy == "issuer" && !bf.hasIssuer {
 		return fmt.Errorf("%s: --group-by issuer needs an issuer column in the input", path)
 	}
+	if groupBy == "rating" && !bf.hasRating {
+		return fmt.Errorf("%s: --group-by rating needs a rating column in the input", path)
+	}
 	l, err := cf.load(e)
 	if err != nil {
 		return err
@@ -376,7 +382,7 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 	if err != nil {
 		return err
 	}
-	t := &table{cols: bondTableCols(bf.hasIssuer)}
+	t := &table{cols: bondTableCols(bf.hasIssuer, bf.hasRating)}
 	var failedIDs []string
 	failed := 0
 	groups := &groupStats{}
@@ -409,6 +415,9 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 		if bf.hasIssuer {
 			row = append(row, b.issuer)
 		}
+		if bf.hasRating {
+			row = append(row, b.rating)
+		}
 		if err != nil {
 			// failed rows echo the raw input fields
 			failed++
@@ -438,6 +447,8 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 			switch groupBy {
 			case "issuer":
 				key = b.issuer
+			case "rating":
+				key = b.rating
 			case "freq":
 				key = strconv.Itoa(int(fr))
 			case "daycount":

@@ -94,6 +94,7 @@ func commands() []command {
 		{"curve show", "zero rates, discount factors and forwards of a curve", buildCurveShow},
 		{"curve forward", "forward rates of a given tenor along a curve", buildCurveForward},
 		{"curve template", "print a template curve file", buildCurveTemplate},
+		{"bond fetch", "fetch bonds with prices from SIX Swiss Exchange as a bond CSV", buildBondFetch},
 		{"bond price", "price, yield, z-spread and risk of fixed-coupon bonds", buildBondPrice},
 		{"swap rate", "par swap rates for a set of tenors", buildSwapRate},
 		{"option price", "Black-Scholes price and Greeks of a European option", buildOptionPrice},

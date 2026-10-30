@@ -1,5 +1,22 @@
 # Changelog
 
+## fic bond fetch --source six
+
+- **`fic bond fetch --source six [--issuer NAME] [--rating AAA,AA,...] [--currency CHF] [--file FILE|-]
+  [--timeout 30s] [--format csv] [-o FILE]`**: bonds of SIX Swiss Exchange (segment BO) with delayed closing prices as
+  a bond CSV `maturity,coupon_pct,price_clean,id,freq,daycount,issuer,rating`, sorted by maturity, then ISIN. `freq`
+  comes from `InterestFrequencyCode` (1, 2, 4), `daycount` from `AccruedInterestCalcCode` (`A011`, `A013` to
+  `EUROBOND`, `A001` to `BONDBASIS`, `A004` to `ACT360`); perpetuals, flat bonds (`A000`) and unknown codes are
+  skipped and counted on stderr. ISO 8859-1 responses are converted, quoting is strict, the HTML error page of the
+  service is reported with an excerpt. Library: `source.SIXQuery`, `source.ParseSIX`, `Client.FetchSIX`.
+- **`rating` column** in bond files: `fic bond price --in` carries it through (next to `issuer`) and
+  `--group-by` accepts `rating`; `fic curve fit` ignores it.
+- **`scripts/six-bonds.zsh` is a deprecated wrapper** of the new command (`-f FILE`, `ISSUER` kept; prints a note).
+  The output columns changed from `maturity,coupon_pct,price_clean,id,issuer` to
+  `maturity,coupon_pct,price_clean,id,freq,daycount,issuer,rating`; rows with an invalid coupon (the old script
+  wrote an empty coupon) are skipped with a warning, and with `-f` a given ISSUER now filters the file. Removed:
+  `scripts/lib/six.awk` and `scripts/lib/csv.awk`.
+
 ## Analysis in fic
 
 Three analysis features move into the `fic` binary.
@@ -20,8 +37,8 @@ Three analysis features move into the `fic` binary.
   Migration: `avg-spread.zsh -c curve.json -d DATE bonds.csv` is
   `fic bond price --curve curve.json --date DATE --in bonds.csv --group-by issuer --format csv`. Differences: without
   an `issuer` column the new command fails (exit 1) instead of printing one group `all`; the output has the extra
-  column `dv01_sum`; the skipped-rows message is a `fic bond price` warning. `scripts/lib/csv.awk` stays (used by
-  `six-bonds.zsh`). The R scripts in `r/` are now optional, for custom plots.
+  column `dv01_sum`; the skipped-rows message is a `fic bond price` warning. `scripts/lib/csv.awk` was removed later
+  with `six-bonds.zsh`'s awk code. The R scripts in `r/` are now optional, for custom plots.
 
 ## Removed (cleanup)
 

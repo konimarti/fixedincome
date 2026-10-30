@@ -9,6 +9,10 @@ Small fixtures for the examples, the tests (`internal/cli`) and the scripts.
 | `fit_residuals_2021-11-26.csv` | per-bond residuals of the NSS and spline fits of `bonds_2021-11-26.csv` | `fic curve fit`, see "Regenerating the samples" |
 | `fit_2021-11-26.png` | plot of the fits and residuals | `r/curve.R` on the residuals file |
 
+Bond files with prices of SIX Swiss Exchange: `fic bond fetch --source six` (delayed closing prices; check the
+[terms of use](https://www.six-group.com/en/products-services/the-swiss-stock-exchange/market-data/news-tools/terms-conditions.html)
+before redistributing; `pkg/source/testdata/six_ref.csv` is a synthetic fixture in the format of the service).
+
 Test fixtures of the downloads (SNB cube `rendopar` as of 2025-07-29..31, ECB AAA parameters and spot rates of
 2026-10-27..29, as downloaded on 2026-10-30) are in `pkg/source/testdata/` and `scripts/testdata/`. Fresh curve
 files: `fic curve fetch --source snb|ecb` (see the README, including the note that the SNB cube is no longer
@@ -42,7 +46,7 @@ insensitive, any order, unknown columns ignored):
 | `freq` | coupons per year (1, 2, 3, 4, 6, 12), default `--freq` | no |
 | `daycount` | `30E360`, `EUROBOND`, `BONDBASIS`, `ACT360`, `ACTACT`, default `--daycount` | no |
 | `face`, `redemption` | face value (default 100) and redemption (default face) | no |
-| `issuer` | echoed to the output; `fic bond price --in --group-by issuer` aggregates per issuer | no |
+| `issuer`, `rating` | echoed to the output; `fic bond price --in --group-by issuer\|rating` aggregates per issuer or rating; `fic bond fetch --source six` writes both | no |
 
 Without a header the columns are `maturity,coupon,price,id`. CRLF line endings,
 a byte order mark, quoted fields and blank lines are accepted.

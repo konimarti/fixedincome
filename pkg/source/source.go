@@ -8,6 +8,12 @@
 // Client); the parsers ParseSNB and ParseECB work on any io.Reader, so that
 // downloaded files can be used offline.
 //
+// The bond reference data of SIX Swiss Exchange (SIXQuery, ParseSIX,
+// Client.FetchSIX; prices are delayed closing prices) is fetched by the same
+// Client; its terms of use are at
+// https://www.six-group.com/en/products-services/the-swiss-stock-exchange/market-data/news-tools/terms-conditions.html
+// (not verified; check them before redistributing the data).
+//
 // Both banks publish the betas in percent and the decay parameters tau1,
 // tau2 in years. The returned Curve has the library convention (betas as
 // decimals, 0.01 = 1%), the conversion happens in this package only (see

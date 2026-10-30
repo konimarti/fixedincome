@@ -1,0 +1,6 @@
+fic bond fetch: warning: skipped 1 rows: no accrued interest, flat (A000)
+fic bond fetch: warning: skipped 1 rows: perpetual (no fixed maturity)
+fic bond fetch: warning: skipped 1 rows: unsupported accrued interest code "A099"
+fic bond fetch: warning: skipped 1 rows: unsupported frequency code "Y"
+fic bond fetch: SIX: 6 bonds written (currency CHF), 4 rows skipped; by rating: AA 3, AAA 2, unrated 1
+fic bond fetch: prices: 4 of 6 bonds have a price; these are delayed closing prices from SIX (check the terms of use before redistributing)

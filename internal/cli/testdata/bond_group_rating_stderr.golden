@@ -1,0 +1,2 @@
+fic bond price: warning: --date 2026-10-30 differs from the asof date 2021-03-31 of ../../data/curve_snb_2021-03-31.json
+fic bond price: warning: 2 of 6 rows not in the groups (status not ok or no market price)

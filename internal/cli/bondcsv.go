@@ -19,8 +19,8 @@ import (
 type bondRow struct {
 	line int
 	id   string
-	// issuer is an optional pass-through column
-	issuer string
+	// issuer and rating are optional pass-through columns
+	issuer, rating string
 	// matRaw is the maturity field as read
 	matRaw   string
 	maturity time.Time
@@ -47,8 +47,8 @@ type bondRow struct {
 
 // bondFile are the rows of a bond CSV file.
 type bondFile struct {
-	rows      []bondRow
-	hasIssuer bool
+	rows                 []bondRow
+	hasIssuer, hasRating bool
 }
 
 // errMissingPrice is the reason why fit skips a row without a price.
@@ -63,7 +63,7 @@ var bondColumnAliases = map[string]string{
 	"freq": "freq", "frequency": "freq",
 	"daycount": "daycount", "day_count": "daycount",
 	"face": "face", "redemption": "redemption", "weight": "weight",
-	"issuer": "issuer",
+	"issuer": "issuer", "rating": "rating",
 }
 
 // missingTokens are field values that mean "no price".
@@ -71,7 +71,7 @@ var missingTokens = map[string]bool{"": true, "n/a": true, "na": true, "n.a.": t
 
 // readBondRows reads a bond CSV file: comma-separated, header row with the
 // columns maturity, coupon_pct, price_clean and optionally id, freq,
-// daycount, face, redemption, issuer (column names are case-insensitive, in
+// daycount, face, redemption, issuer, rating (column names are case-insensitive, in
 // any order; "coupon", "price", "frequency" are accepted as aliases). A
 // missing price (empty, N/A, -) is not an error of the row (hasPrice is
 // false). A
@@ -140,6 +140,7 @@ func readBondRows(r io.Reader) (*bondFile, error) {
 	}
 	bf := &bondFile{}
 	_, bf.hasIssuer = col["issuer"]
+	_, bf.hasRating = col["rating"]
 	get := func(row []string, name string) (string, bool) {
 		i, ok := col[name]
 		if !ok || i >= len(row) {
@@ -155,6 +156,7 @@ func readBondRows(r io.Reader) (*bondFile, error) {
 			b.id = fmt.Sprintf("row%d", b.line)
 		}
 		b.issuer, _ = get(row, "issuer")
+		b.rating, _ = get(row, "rating")
 		fail := func(format string, args ...any) {
 			if b.err == nil {
 				b.err = fmt.Errorf(format, args...)
