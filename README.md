@@ -1,8 +1,8 @@
 # Valuation of Fixed Income Securities
 
 [![License](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/konimarti/fixedincome/blob/master/LICENSE)
-[![GoDoc](https://godoc.org/github.com/konimarti/observer?status.svg)](https://godoc.org/github.com/konimarti/fixedincome)
-[![goreportcard](https://goreportcard.com/badge/github.com/konimarti/observer)](https://goreportcard.com/report/github.com/konimarti/fixedincome)
+[![GoDoc](https://godoc.org/github.com/konimarti/fixedincome?status.svg)](https://godoc.org/github.com/konimarti/fixedincome)
+[![goreportcard](https://goreportcard.com/badge/github.com/konimarti/fixedincome)](https://goreportcard.com/report/github.com/konimarti/fixedincome)
 
 A Go library and a command line tool (`fic`) for the valuation of fixed income securities with spot-rate
 term structures or continuous-time interest-rate models:
@@ -122,7 +122,7 @@ Flags work with one or two dashes (`--curve` is documented). `fic help <command>
 | `fic bond price` | `--curve`, `--date`, `--spread BP`, `--maturity D\|5y`, `--coupon PCT`, `--freq 1\|2\|3\|4\|6\|12` (default 1), `--daycount 30E360\|EUROBOND\|BONDBASIS\|ACT360\|ACTACT`, `--face 100`, `--redemption` (default: the face value), one of `--price CLEAN` (percent of face) or `--yield PCT` (cc), or `--in FILE\|-` for a bond CSV (batch) |
 | `fic swap rate` | `--curve`, `--fwd-curve FILE` (forecast curve of the floating leg, default the same curve), `--tenors 2y,3y,...,10y`, `--freq 2`, `--spread BP` (on the discount curve). Swaps start at the curve date, so par rates do not depend on a valuation date and `swap rate` has no `--date` flag. Columns `tenor, tenor_years, freq, par_rate_pct, annuity` |
 | `fic option price` | `--type call\|put`, `--spot S`, `--strike K`, `--expiry 2y\|2.5\|DATE` (a date `YYYY-MM-DD` / `DD.MM.YYYY` is relative to `--date`), `--vol PCT` or `--implied-from PRICE`, `--rate PCT` or `--curve FILE` (zero rate at the expiry), `--div PCT`, `--date`. Columns `type, spot, strike, expiry_years, vol_pct, rate_cc_pct, div_pct, price, delta, gamma, vega_per_volpt, theta_per_day, rho_per_pct, phi_per_pct` |
-| `fic sim zcb` | `--model holee\|hullwhite\|vasicek`, `--curve`, `--sigma PCT` (short rate vol per sqrt(year), 1 = 100bp), `--mean-reversion A` (hullwhite), `--horizon 10y`, `--steps 120`, `--paths 10000`, `--seed N` (default 1, 0 = time based), `--antithetic`. Columns `t_years, curve_zero_cc_pct, curve_fwd_cc_pct, curve_discount, model_discount, mc_discount, mc_stderr, mc_zero_cc_pct, z_score` |
+| `fic sim zcb` | `--model holee\|hullwhite\|vasicek`, `--curve`, `--sigma PCT` (short rate vol per sqrt(year), 1 = 100bp), `--mean-reversion A` (hullwhite), `--spread BP` (added to the curve file spread), `--horizon 10y`, `--steps 120`, `--paths 10000`, `--seed N` (default 1, 0 = time based), `--antithetic`. Columns `t_years, curve_zero_cc_pct, curve_fwd_cc_pct, curve_discount, model_discount, mc_discount, mc_stderr, mc_zero_cc_pct, z_score` |
 
 **`fic option price`, Greek units.** The Greeks are scaled at the boundary to practical units: `delta` (per 1 of
 spot), `gamma` (per 1 of spot, per 1 of spot), `vega_per_volpt` (price change per 1 volatility point = 1%),
@@ -244,7 +244,7 @@ print `deprecated: use "fic ..."` to stderr.
 - `bonds-cli` and `swaprate-cli` print the text output of `fic bond price` / `fic swap rate` (labels and
   columns as documented above) instead of the old human-readable layout. The old "Implied spread" is
   `spread_total_bp`. Duration and convexity are now evaluated at the market price (on the curve shifted by the
-  z-spread) when a quote is given: e.g. 8.5725 instead of the old 8.6061 (curve duration). `-spread` is added to
+  z-spread) when a quote is given (the old tool used the duration of the unshifted curve). `-spread` is added to
   the spread of the curve file (it replaced it before).
 - `option-cli` keeps its old text output and raw units (Greeks per 1.00; `-vola` is a decimal, and a warning is
   printed for `-vola` > 5). `fic option price` uses `--vol` in percent and the scaled Greeks above.

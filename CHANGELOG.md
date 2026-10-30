@@ -20,7 +20,7 @@ There is no `--legacy-output` switch.
   `spread_total_bp` (file spread + `-spread` + z-spread, e.g. 155.4 for
   `-spread 50 -quote 101 -n 2` of the old tool). Duration and convexity are
   evaluated at the market price (on the curve shifted by the z-spread) when a
-  quote is given, not on the curve (e.g. 8.5725 instead of 8.6061).
+  quote is given, not on the curve.
 - `option-cli` keeps its old text output and the raw units of the Greeks;
   `-vola` stays a decimal (warning for `-vola` > 5). `fic option price` reports
   `vega_per_volpt`, `theta_per_day`, `rho_per_pct` and `phi_per_pct`.
