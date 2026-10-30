@@ -5,7 +5,9 @@ Small fixtures for the examples, the tests (`internal/cli`) and the scripts.
 | File | Content | Provenance |
 |---|---|---|
 | `curve_snb_2021-03-31.json` | Nelson-Siegel-Svensson curve of the Swiss National Bank (CHF risk-free spot rates) as of 2021-03-31 | parameters published by the SNB ([data.snb.ch](https://data.snb.ch/en/topics/ziredev#!/cube/rendopar)), written with `fic curve template` |
-| `bonds_2021-11-26.csv` | 39 CHF bonds (money market bills and Swiss Confederation bonds) with the clean prices of 2021-11-26 | `cmds/termfit/bonddata.csv` in the new format (ISINs/valor numbers in `id`); dates normalised to ISO, columns renamed |
+| `bonds_2021-11-26.csv` | 39 CHF bonds (money market bills and Swiss Confederation bonds) with the clean prices of 2021-11-26 | the former `bonddata.csv` of the removed `termfit` tool in the new format (ISINs/valor numbers in `id`); dates normalised to ISO, columns renamed |
+| `fit_residuals_2021-11-26.csv` | per-bond residuals of the NSS and spline fits of `bonds_2021-11-26.csv` | `fic curve fit`, see "Regenerating the samples" |
+| `fit_2021-11-26.png` | plot of the fits and residuals | `r/curve.R` on the residuals file |
 
 Test fixtures of the downloads (SNB cube `rendopar` as of 2025-07-29..31, ECB AAA parameters and spot rates of
 2026-10-27..29, as downloaded on 2026-10-30) are in `pkg/source/testdata/` and `scripts/testdata/`. Fresh curve
@@ -49,13 +51,13 @@ a byte order mark, quoted fields and blank lines are accepted.
 
 ## Regenerating the samples
 
-`cmds/termfit/result.csv` (per-bond residuals of the fit of `bonds_2021-11-26.csv`) and `cmds/termfit/termfit.png`
+`data/fit_residuals_2021-11-26.csv` (per-bond residuals of the fit of `bonds_2021-11-26.csv`) and `data/fit_2021-11-26.png`
 are the output of exactly:
 
 ```sh
 fic curve fit --bonds data/bonds_2021-11-26.csv --date 2021-11-26 --onrate -0.75 --model both \
-   -o fit.json --residuals cmds/termfit/result.csv
-Rscript r/curve.R cmds/termfit/result.csv cmds/termfit/termfit.png
+   -o fit.json --residuals data/fit_residuals_2021-11-26.csv
+Rscript r/curve.R data/fit_residuals_2021-11-26.csv data/fit_2021-11-26.png
 ```
 
 (`--onrate -0.75` imposes an overnight rate of -0.75%; without it the result differs.)

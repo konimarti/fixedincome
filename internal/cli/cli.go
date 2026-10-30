@@ -1,5 +1,4 @@
-// Package cli implements the commands of the fic binary (and the legacy
-// command line tools, which are thin shims over it).
+// Package cli implements the commands of the fic binary.
 //
 // Conventions at the command line boundary (see units.go, the only place
 // where units are converted): rates, yields, volatilities and dividend
@@ -33,8 +32,6 @@ const (
 	ExitError   = 1
 	ExitUsage   = 2
 	curveEnvVar = "FIC_CURVE"
-	// curveEnvVarOld is the deprecated name of curveEnvVar
-	curveEnvVarOld = "FI_CURVE"
 )
 
 // usageError is an error that is reported with exit code 2.

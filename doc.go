@@ -19,5 +19,5 @@
 // Conventions: all rates, yields, spreads and volatilities are decimals
 // (0.02 = 2%, 0.0001 = 1bp) and continuously compounded unless stated
 // otherwise; percent and basis points are only used at the I/O boundary
-// (curve files, command line tools). Times are in years, ACT/365 Fixed.
+// (curve files, the fic command). Times are in years, ACT/365 Fixed.
 package fixedincome

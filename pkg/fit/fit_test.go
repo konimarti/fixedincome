@@ -560,12 +560,17 @@ func TestParseObjective(t *testing.T) {
 
 // sampleBonds returns the shipped CHF government bond sample (2021-11-26).
 func sampleBonds(t testing.TB) ([]Bond, time.Time) {
-	f, err := os.Open("../../cmds/termfit/bonddata.csv")
+	data, err := os.ReadFile("../../data/bonds_2021-11-26.csv")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
-	bonds, err := ReadBondsCSV(f)
+	// ReadBondsCSV knows the columns coupon and price (the data file has the
+	// fic names coupon_pct and price_clean; the values are the same)
+	header, rest, _ := strings.Cut(string(data), "\n")
+	if header != "maturity,coupon_pct,price_clean,id" {
+		t.Fatalf("unexpected header %q", header)
+	}
+	bonds, err := ReadBondsCSV(strings.NewReader("maturity,coupon,price,id\n" + rest))
 	if err != nil {
 		t.Fatal(err)
 	}

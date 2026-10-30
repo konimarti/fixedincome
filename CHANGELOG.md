@@ -1,5 +1,47 @@
 # Changelog
 
+## Removed (cleanup)
+
+The deprecated code of WP5 is gone. Nothing else changed; `fic` and the library behave as before.
+
+- **The six legacy binaries** `bonds-cli`, `swaprate-cli`, `option-cli`, `termfit`, `fwdcrv` and `holee`
+  (`cmds/*`, the shims in `internal/cli/legacy.go` and their tests). `cmds/` contains only `cmds/fic`.
+- **The `FI_CURVE` environment variable.** Use `FIC_CURVE`.
+- **The legacy curve file format** (no `"model"` field, model sniffed from the keys `b0`..`t2`, `maturities` +
+  `discountfactors`, `r`, and `spread`). `term.Parse` returns the error
+  `curve file has no "model" field (legacy format is no longer supported; see "fic curve template")`.
+  Migration: add `"model": "nss"`, `"spline"` or `"flat"`, move the values into `"params"` (NSS: `b0`..`b3`, `t1`,
+  `t2`; flat: `r`) or `"knots"` / `"discount_factors"` (spline; now strictly increasing knots), and rename
+  `spread` to `spread_bp`; `fic curve template` prints examples. The root `term.json` and `cmds/holee/term.json`
+  are deleted.
+- Moved: `cmds/termfit/result.csv` is `data/fit_residuals_2021-11-26.csv`, `cmds/termfit/termfit.png` is
+  `data/fit_2021-11-26.png`; `cmds/termfit/bonddata.csv` (duplicate of `data/bonds_2021-11-26.csv`) is deleted and
+  the `pkg/fit` tests read the data file.
+
+### Migration: old command to `fic`
+
+| Old | New |
+|---|---|
+| `bonds-cli -f F -settlement D -maturity M -coupon C -n N -quote P -redemption R -spread S -daycount X` | `fic bond price --curve F --date D --maturity M --coupon C --freq N --price P --redemption R --spread S --daycount X` (`-quote 0` = no price) |
+| `swaprate-cli -f F -s S` | `fic swap rate --curve F --spread S` |
+| `option-cli -type T -s S -k K -t T -q Q -vola V -r R` | `fic option price --type T --spot S --strike K --expiry T --div Q --vol V*100 --rate R` (`-vola` was a decimal, `--vol` is percent) |
+| `termfit -file F -date D -settle-lag N -onrate R -f START -min-ttm Y -lambda L -huber H -objective O -model M` | `fic curve fit --bonds F --date D --settle-lag N --onrate R --start START --min-ttm Y --lambda L --huber H --objective O --model M -o curve.json --residuals residuals.csv` (`termfit` wrote `nss_opt.json`, `spline_opt.json`, `result.csv` to the current directory and read `term.json` as a starting point if it existed; `fic` writes nothing unless `-o` / `--residuals` is given; `-lambda -1` = `--lambda gcv`) |
+| `fwdcrv -f F -m M -t T` | `fic curve forward --curve F --tenor M --t T` (`fwdcrv` wrote `forward.csv` with the columns `x,SpotRate,FwdRate,Z,F`) |
+| `holee -f F -n N -m M -s S -paths P -seed X -o O` | `fic sim zcb --model holee --curve F --steps N --horizon M --sigma S*100 --paths P --seed X -o O` (`-s` was a decimal, `--sigma` is percent; the old CSV was `t,zero_rate,fwd_rate,theta,exp_short_rate,discount,mc_discount,mc_stderr,mc_zero_rate` with decimals; `-seed 0` is time based in both) |
+| `FI_CURVE=F` | `FIC_CURVE=F` |
+
+### Output format changes (relative to the removed tools)
+
+- `fic bond price` / `fic swap rate` print labels and columns as documented in the README instead of the old
+  human-readable layout of `bonds-cli` and `swaprate-cli`. The old "Implied spread" is `spread_total_bp`. Duration
+  and convexity are evaluated at the market price (on the curve shifted by the z-spread) when a quote is given
+  (the old tool used the duration of the unshifted curve). `--spread` is added to the spread of the curve file (it
+  replaced it before).
+- `fic option price` uses `--vol` in percent and reports `vega_per_volpt`, `theta_per_day`, `rho_per_pct` and
+  `phi_per_pct`; `option-cli` printed the raw Greeks per 1.00 and took `-vola` as a decimal.
+- `fic curve fit`, `fic curve forward` and `fic sim zcb` write the CSV formats described in the README, not the
+  legacy files and columns of `termfit`, `fwdcrv` and `holee`.
+
 ## WP6: fetch yield-curve parameters from central banks
 
 - New command `fic curve fetch --source snb|ecb [--date D|latest] [--file FILE|-] [--ecb-issuers aaa|all]

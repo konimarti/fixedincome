@@ -103,7 +103,7 @@ Flags work with one or two dashes (`--curve` is documented). `fic help <command>
 | | |
 |---|---|
 | Units | rates, yields, vols, dividend yields in **percent**; spreads in **bp**; dates `YYYY-MM-DD` or `DD.MM.YYYY` (everywhere a date is read, output dates are ISO); maturities, tenors and horizons as dates or `6m`, `2y`, `10d`, `3w` |
-| Curve | `--curve FILE` (env `FIC_CURVE`, default `./curve.json`; `-` is stdin; the old name `FI_CURVE` is still accepted with a deprecation warning when it is the only one set). The curve date is the `asof` of the file. A `--spread` so large that the discount factors under- or overflow is an error (exit 1) |
+| Curve | `--curve FILE` (env `FIC_CURVE`, default `./curve.json`; `-` is stdin). The curve date is the `asof` of the file. A `--spread` so large that the discount factors under- or overflow is an error (exit 1) |
 | Date | `--date`: default the `asof` of the curve file, else today; a warning on stderr if `--date` and `asof` differ |
 | Spread | the `spread_bp` of the curve file is kept, `--spread BP` is **added** to it |
 | Formats | `--format text\|csv\|json`, `-o FILE` (default stdout). **Output files are atomic and non-destructive:** the data is written to a temporary file next to `-o` and renamed on success, an existing file is never damaged or deleted by a failing run, and `-o` equal to an input file (`--curve`, `--in`, `--bonds`, `--start`, `--fwd-curve`; compared with `os.SameFile`) is a usage error (exit 2). Default format for tables (`curve show/forward`, batch `bond price`, `swap rate`, `sim zcb`): text on a terminal, **csv** when stdout is not a terminal or `-o` is given (a terminal is a character device other than `/dev/null`; this is not a full `isatty` check); for single values (`bond price` of one bond, `option price`): **text** |
@@ -138,8 +138,7 @@ either the bond is valued on the curve. All prices are per 100 of face. Yields a
 - `zspread_bp`: the spread over the effective curve (file `spread_bp` plus `--spread`), i.e. the shift that reprices
   the market price;
 - `spread_total_bp` = file `spread_bp` + `--spread` + z-spread: the spread over the curve with **no** spread (the
-  base curve). With a curve file without spread and no `--spread` both are equal. This is what `bonds-cli` called
-  "Implied spread".
+  base curve). With a curve file without spread and no `--spread` both are equal.
 
 `mod_duration` (positive), `convexity` and `dv01` (value change for +1bp, negative for a long bond) are evaluated on
 the curve shifted by the z-spread, i.e. at the market price (without a quote: on the curve). Text output, one
@@ -183,7 +182,7 @@ spread_total_bp, mod_duration, convexity, dv01, status`.
 ### Data schemas
 
 Curve file (JSON; percent and bp; `model` is `nss`, `spline` with `knots` and `discount_factors`, or `flat`
-with `params: {"r": ...}`; legacy files without `model` are still read):
+with `params: {"r": ...}`; a file without `model` is an error, `fic curve template` prints examples):
 
 ```json
 {"model": "nss", "asof": "2021-03-31", "currency": "CHF", "source": "SNB",
@@ -225,42 +224,17 @@ binary (`FIC=./fic zsh scripts/test.zsh`).
 
 ### Regenerating the committed samples
 
-`data/` holds the curve and bonds. `cmds/termfit/result.csv` and `cmds/termfit/termfit.png` are the output of
+`data/` holds the curve and bonds. `data/fit_residuals_2021-11-26.csv` and `data/fit_2021-11-26.png` are the output of
 exactly (the `--onrate -0.75` matters):
 
 ```sh
 fic curve fit --bonds data/bonds_2021-11-26.csv --date 2021-11-26 --onrate -0.75 --model both \
-   -o fit.json --residuals cmds/termfit/result.csv
-Rscript r/curve.R cmds/termfit/result.csv cmds/termfit/termfit.png
+   -o fit.json --residuals data/fit_residuals_2021-11-26.csv
+Rscript r/curve.R data/fit_residuals_2021-11-26.csv data/fit_2021-11-26.png
 ```
 
 (`fit.nss.json` and `fit.spline.json` are by-products and are ignored by git.) A test
-(`TestRegenerateSample` in `internal/cli`) regenerates `result.csv` in-process and compares it byte for byte.
-
-### Legacy tools (deprecated shims)
-
-`bonds-cli`, `swaprate-cli`, `option-cli`, `termfit`, `fwdcrv` and `holee` still work with their old flags and
-print `deprecated: use "fic ..."` to stderr.
-
-**Output format changes.** There is no legacy-output switch:
-
-- `bonds-cli` and `swaprate-cli` print the text output of `fic bond price` / `fic swap rate` (labels and
-  columns as documented above) instead of the old human-readable layout. The old "Implied spread" is
-  `spread_total_bp`. Duration and convexity are now evaluated at the market price (on the curve shifted by the
-  z-spread) when a quote is given (the old tool used the duration of the unshifted curve). `-spread` is added to
-  the spread of the curve file (it replaced it before).
-- `option-cli` keeps its old text output and raw units (Greeks per 1.00; `-vola` is a decimal, and a warning is
-  printed for `-vola` > 5). `fic option price` uses `--vol` in percent and the scaled Greeks above.
-- `termfit`, `fwdcrv` and `holee` keep their legacy output files and formats.
-
-| Old | New |
-|---|---|
-| `bonds-cli -f F -settlement D -maturity M -coupon C -n N -quote P -redemption R -spread S -daycount X` | `fic bond price --curve F --date D --maturity M --coupon C --freq N --price P --redemption R --spread S --daycount X` (`-quote 0` = no price) |
-| `swaprate-cli -f F -s S` | `fic swap rate --curve F --spread S` |
-| `option-cli -type T -s S -k K -t T -q Q -vola V -r R` | `fic option price --type T --spot S --strike K --expiry T --div Q --vol V*100 --rate R` (`-vola` was a decimal, `--vol` is percent) |
-| `termfit -file F -date D -settle-lag N -onrate R -f START -min-ttm Y -lambda L -huber H -objective O -model M` | `fic curve fit --bonds F --date D --settle-lag N --onrate R --start START --min-ttm Y --lambda L --huber H --objective O --model M -o curve.json --residuals residuals.csv` (the shim still writes `nss_opt.json`, `spline_opt.json`, `result.csv` to the current directory and uses `term.json` as a starting point if it exists; `fic` writes nothing unless `-o` / `--residuals` is given; `-lambda -1` = `--lambda gcv`) |
-| `fwdcrv -f F -m M -t T` | `fic curve forward --curve F --tenor M --t T` (the shim still writes `forward.csv` with the columns `x,SpotRate,FwdRate,Z,F`) |
-| `holee -f F -n N -m M -s S -paths P -seed X -o O` | `fic sim zcb --model holee --curve F --steps N --horizon M --sigma S*100 --paths P --seed X -o O` (`-s` was a decimal, `--sigma` is percent; the shim keeps the old CSV `t,zero_rate,fwd_rate,theta,exp_short_rate,discount,mc_discount,mc_stderr,mc_zero_rate` with decimals; `-seed 0` is time based in both) |
+(`TestRegenerateSample` in `internal/cli`) regenerates the residuals in-process and compares it byte for byte.
 
 ## Nelson-Siegel-Svensson parameters
 
@@ -282,4 +256,4 @@ check them before redistributing the data. Network behaviour: one request per ca
 
 Further reading: [Nelson-Siegel-Svensson model at SNB](https://www.snb.ch/de/mmr/reference/quartbul_2002_2_komplett/source/quartbul_2002_2_komplett.de.pdf) (page 64).
 
-See [CHANGELOG.md](CHANGELOG.md) for the API and CLI migration tables.
+See [CHANGELOG.md](CHANGELOG.md) for the API and CLI migration tables (including the removed legacy tools).

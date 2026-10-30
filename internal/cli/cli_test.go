@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -707,68 +706,40 @@ func TestTenorsAndGrid(t *testing.T) {
 	}
 }
 
-func TestLegacyShims(t *testing.T) {
-	var out, errOut bytes.Buffer
-	legacyCurve := "../../term.json"
-	if code := LegacyBonds([]string{"-f", legacyCurve, "-settlement", "2021-04-17", "-maturity", "2026-05-25", "-coupon", "1.25", "-quote", "109.70"}, &out, &errOut); code != 0 {
-		t.Fatalf("bonds-cli: %d %s", code, errOut.String())
+// TestSimWarnings: degenerate inputs give warnings instead of absurd dev/SE
+// ratios.
+func TestSimWarnings(t *testing.T) {
+	for _, c := range []struct {
+		args []string
+		warn string
+	}{
+		{[]string{"--sigma", "50", "--horizon", "30y", "--steps", "30", "--paths", "1000", "--seed", "7"}, "underflow"},
+		{[]string{"--sigma", "1", "--horizon", "0.000000001", "--steps", "3", "--paths", "100", "--seed", "7"}, "rounding level"},
+	} {
+		code, _, errOut := run(t, append([]string{"sim", "zcb", "--curve", curveFile}, c.args...)...)
+		if code != 0 {
+			t.Fatalf("%v: exit %d: %s", c.args, code, errOut)
+		}
+		if !strings.Contains(errOut, c.warn) {
+			t.Errorf("%v: no %q warning in %q", c.args, c.warn, errOut)
+		}
+		if strings.Contains(errOut, "e+") && !strings.Contains(errOut, "1000 standard errors") {
+			t.Errorf("%v: huge dev/SE without warning: %q", c.args, errOut)
+		}
 	}
-	if !strings.Contains(errOut.String(), `deprecated: use "fic bond price"`) || !strings.Contains(out.String(), "price_clean: 109.7") {
-		t.Errorf("bonds-cli: %q %q", out.String(), errOut.String())
+}
+
+// TestFitZeroOvernightRate: --onrate 0 imposes a 0% short rate.
+func TestFitZeroOvernightRate(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "curve.json")
+	if code, _, errOut := run(t, "curve", "fit", "--bonds", bondsFile, "--date", "2021-11-26", "--onrate", "0", "--model", "nss", "-o", out); code != 0 {
+		t.Fatalf("%d %s", code, errOut)
 	}
-	out.Reset()
-	errOut.Reset()
-	// option-cli: -vola is a decimal, -r and -q are percent
-	if code := LegacyOption([]string{"-vola", "0.3", "-r", "2", "-q", "1", "-t", "2"}, &out, &errOut); code != 0 {
-		t.Fatalf("option-cli: %d %s", code, errOut.String())
-	}
-	o := option.European{Type: option.Call, S: 110, K: 100, T: 2, Vol: 0.3, Q: 0.01}
-	p, _ := o.Price(term.Flat{Rate: 0.02})
-	g, _ := o.Greeks(term.Flat{Rate: 0.02})
-	if want := fmt.Sprintf("Call Option\nPrice: %9.4f\n\nThe 'Greeks'\nDelta: %9.4f\nGamma: %9.4f\nRho  : %9.4f\nVega : %9.4f\n", p, g.Delta, g.Gamma, g.Rho, g.Vega); out.String() != want {
-		t.Errorf("option-cli: %q (price %v)", out.String(), p)
-	}
-	if strings.Contains(errOut.String(), "looks like percent") {
-		t.Errorf("warning for -vola 0.3: %q", errOut.String())
-	}
-	// RC6: -vola 30 looks like percent
-	out.Reset()
-	errOut.Reset()
-	if code := LegacyOption([]string{"-vola", "30"}, &out, &errOut); code != 0 || !strings.Contains(errOut.String(), "-vola 30 looks like percent; -vola is a decimal here") {
-		t.Errorf("-vola 30: %d %q", code, errOut.String())
-	}
-	if code := LegacyOption([]string{"-type", "straddle"}, &out, &errOut); code != 2 {
-		t.Errorf("-type straddle: exit %d", code)
-	}
-	out.Reset()
-	errOut.Reset()
-	if code := LegacySwapRate([]string{"-f", legacyCurve, "-s", "10"}, &out, &errOut); code != 0 || !strings.Contains(out.String(), "10y") {
-		t.Errorf("swaprate-cli: %d %q %q", code, out.String(), errOut.String())
-	}
-	// unknown flag: exit 2
-	if code := LegacySwapRate([]string{"-nope"}, &out, &errOut); code != 2 {
-		t.Errorf("unknown flag: exit %d", code)
-	}
-	// fwdcrv writes forward.csv to the working directory (legacy)
-	wd, _ := os.Getwd()
-	abs, _ := filepath.Abs(legacyCurve)
-	if err := os.Chdir(t.TempDir()); err != nil {
+	c, _, err := term.Parse(mustRead(t, out))
+	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(wd)
-	out.Reset()
-	errOut.Reset()
-	if code := LegacyFwdcrv([]string{"-f", abs, "-t", "2", "-m", "1"}, &out, &errOut); code != 0 {
-		t.Fatalf("fwdcrv: %d %s", code, errOut.String())
-	}
-	b, err := os.ReadFile("forward.csv")
-	if err != nil || !strings.HasPrefix(string(b), "x,SpotRate,FwdRate,Z,F\n") || strings.Count(string(b), "\n") != 121 {
-		t.Errorf("forward.csv: %v %.60q", err, b)
-	}
-	if !strings.Contains(out.String(), "Discount Factors and Forward Rate") {
-		t.Errorf("fwdcrv stdout: %q", out.String())
-	}
-	if code := LegacyFwdcrv([]string{"-f", abs, "-m", "0"}, &out, &errOut); code != 1 {
-		t.Errorf("fwdcrv -m 0: exit %d", code)
+	if r0 := c.ZeroRate(0); math.Abs(r0) > 1e-15 {
+		t.Errorf("--onrate 0: short rate %v", r0)
 	}
 }

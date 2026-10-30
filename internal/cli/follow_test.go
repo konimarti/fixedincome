@@ -96,20 +96,6 @@ func TestSpreadTotal(t *testing.T) {
 	if !strings.Contains(txt, "spread_total_bp: 50\n") || strings.Contains(txt, "zspread_bp") {
 		t.Errorf("text: %s", txt)
 	}
-	// the bonds-cli shim prints the total spread
-	var o, e bytes.Buffer
-	if code := LegacyBonds([]string{"-f", "../../term.json", "-settlement", "2021-04-17", "-maturity", "2026-05-25", "-coupon", "1.25", "-n", "2", "-quote", "101", "-spread", "50"}, &o, &e); code != 0 {
-		t.Fatal(e.String())
-	}
-	var tot2 float64
-	for _, l := range strings.Split(o.String(), "\n") {
-		if v, ok := strings.CutPrefix(l, "spread_total_bp: "); ok {
-			tot2, _ = strconv.ParseFloat(v, 64)
-		}
-	}
-	if tot2 < 100 {
-		t.Errorf("shim total spread %v:\n%s", tot2, o.String())
-	}
 }
 
 // TestGreekUnits: RC4.
@@ -262,24 +248,8 @@ func TestNegativeZeroAndSpread(t *testing.T) {
 	}
 }
 
-// TestEnvAlias: FIC_CURVE and the deprecated FI_CURVE.
-func TestEnvAlias(t *testing.T) {
-	t.Setenv("FIC_CURVE", "")
-	t.Setenv("FI_CURVE", curveFile)
-	code, _, errOut := run(t, "curve", "show", "--t", "1y")
-	if code != 0 || !strings.Contains(errOut, "FI_CURVE is deprecated, use FIC_CURVE") {
-		t.Errorf("old env: %d %q", code, errOut)
-	}
-	t.Setenv("FIC_CURVE", curveFile)
-	t.Setenv("FI_CURVE", "/nonexistent")
-	code, _, errOut = run(t, "curve", "show", "--t", "1y")
-	if code != 0 || errOut != "" {
-		t.Errorf("new env wins: %d %q", code, errOut)
-	}
-}
-
-// TestRegenerateSample: the committed cmds/termfit/result.csv is the output
-// of the documented command (see README).
+// TestRegenerateSample: the committed data/fit_residuals_2021-11-26.csv is
+// the output of the documented command (see README).
 func TestRegenerateSample(t *testing.T) {
 	dir := t.TempDir()
 	res := filepath.Join(dir, "result.csv")
@@ -288,8 +258,8 @@ func TestRegenerateSample(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("%d %s", code, errOut)
 	}
-	want := mustRead(t, "../../cmds/termfit/result.csv")
+	want := mustRead(t, "../../data/fit_residuals_2021-11-26.csv")
 	if got := mustRead(t, res); !bytes.Equal(got, want) {
-		t.Errorf("cmds/termfit/result.csv is not reproduced by the documented command (%d vs %d bytes)", len(got), len(want))
+		t.Errorf("data/fit_residuals_2021-11-26.csv is not reproduced by the documented command (%d vs %d bytes)", len(got), len(want))
 	}
 }

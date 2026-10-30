@@ -146,7 +146,7 @@ func TestNSSDiagnostics(t *testing.T) {
 }
 
 // RF12: the separation penalty and the ridge have an effect: polished from
-// the beta blow-up that the previous termfit found on the 35-bond sample
+// the beta blow-up that the former termfit tool found on the 35-bond sample
 // (b2 = 288%, b3 = -287%, tau = 3.897/3.880), Levenberg-Marquardt stays in
 // the blow-up without them and leaves it with them.
 func TestNSSRegularisationEffect(t *testing.T) {

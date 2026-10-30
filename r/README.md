@@ -19,12 +19,12 @@ Rscript r/sim.R sim.csv sim.png
 | `r/curve.R` | `[residuals.csv [out.png [curve.csv]]]` (`residuals.csv`, `curve.png`, none) | `fic curve fit --residuals`, optionally `fic curve show/forward` |
 | `r/sim.R` | `[sim.csv [out.png]]` (`sim.csv`, `sim.png`) | `fic sim zcb` |
 
-The committed `cmds/termfit/result.csv` and `termfit.png` are produced by exactly (note `--onrate -0.75`):
+The committed `data/fit_residuals_2021-11-26.csv` and `fit_2021-11-26.png` are produced by exactly (note `--onrate -0.75`):
 
 ```sh
 fic curve fit --bonds data/bonds_2021-11-26.csv --date 2021-11-26 --onrate -0.75 --model both \
-   -o fit.json --residuals cmds/termfit/result.csv
-Rscript r/curve.R cmds/termfit/result.csv cmds/termfit/termfit.png
+   -o fit.json --residuals data/fit_residuals_2021-11-26.csv
+Rscript r/curve.R data/fit_residuals_2021-11-26.csv data/fit_2021-11-26.png
 ```
 
 The scripts read and validate all inputs before the PNG is opened and write it via a temporary file, so an error

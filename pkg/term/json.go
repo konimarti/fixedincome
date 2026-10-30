@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -59,20 +58,15 @@ const (
 //
 // The optional "version" must be 1 (FileVersion) and the optional "comment"
 // is ignored, as are keys prefixed "x-" (extensions); other unknown fields
-// are rejected. Model names are case-insensitive. Files without a "model"
-// field are parsed in
-// the legacy format, in which the model is determined by its keys (in this
-// order): Nelson-Siegel-Svensson ("b0".."b3", "t1", "t2" in percent/years),
-// spline ("maturities", "discountfactors"; maturities may be unsorted) and
-// flat ("r" in percent); the optional "spread" is in basis points.
+// are rejected. Model names are case-insensitive. A file without a "model"
+// field is an error.
 func Parse(data []byte) (Curve, Meta, error) {
 	raw := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, Meta{}, fmt.Errorf("term: invalid curve file: %w", err)
 	}
 	if _, ok := raw["model"]; !ok {
-		c, err := parseLegacy(raw)
-		return c, Meta{}, err
+		return nil, Meta{}, fmt.Errorf("term: curve file has no \"model\" field (legacy format is no longer supported; see \"fic curve template\")")
 	}
 
 	for key := range raw {
@@ -179,83 +173,6 @@ func finite(v float64, name string) error {
 		return fmt.Errorf("term: %s is not finite", name)
 	}
 	return nil
-}
-
-// parseLegacy parses the legacy key-sniffing format.
-func parseLegacy(raw map[string]json.RawMessage) (Curve, error) {
-	has := func(keys ...string) bool {
-		for _, key := range keys {
-			if _, ok := raw[key]; !ok {
-				return false
-			}
-		}
-		return true
-	}
-	number := func(key string) (float64, error) {
-		var v float64
-		if err := json.Unmarshal(raw[key], &v); err != nil {
-			return 0, fmt.Errorf("term: invalid %q: %w", key, err)
-		}
-		return v, nil
-	}
-	spread := 0.0
-	if has("spread") {
-		s, err := number("spread")
-		if err != nil {
-			return nil, err
-		}
-		spread = s / 1e4
-	}
-
-	switch {
-	case has("b0", "b1", "b2", "b3", "t1", "t2"):
-		p := make([]float64, 6)
-		for i, key := range []string{"b0", "b1", "b2", "b3", "t1", "t2"} {
-			v, err := number(key)
-			if err != nil {
-				return nil, err
-			}
-			p[i] = v
-		}
-		n, err := NewNSS(p[0]/100, p[1]/100, p[2]/100, p[3]/100, p[4], p[5])
-		if err != nil {
-			return nil, err
-		}
-		return WithSpread(n, spread), nil
-	case has("maturities", "discountfactors"):
-		var t, z []float64
-		if err := json.Unmarshal(raw["maturities"], &t); err != nil {
-			return nil, fmt.Errorf("term: invalid \"maturities\": %w", err)
-		}
-		if err := json.Unmarshal(raw["discountfactors"], &z); err != nil {
-			return nil, fmt.Errorf("term: invalid \"discountfactors\": %w", err)
-		}
-		if len(t) != len(z) {
-			return nil, fmt.Errorf("term: number of maturities (%d) and discount factors (%d) differ", len(t), len(z))
-		}
-		// the legacy format allows unsorted maturities
-		idx := make([]int, len(t))
-		for i := range idx {
-			idx[i] = i
-		}
-		sort.SliceStable(idx, func(a, b int) bool { return t[idx[a]] < t[idx[b]] })
-		ts, zs := make([]float64, len(t)), make([]float64, len(t))
-		for i, j := range idx {
-			ts[i], zs[i] = t[j], z[j]
-		}
-		s, err := NewSpline(ts, zs)
-		if err != nil {
-			return nil, err
-		}
-		return WithSpread(s, spread), nil
-	case has("r"):
-		r, err := number("r")
-		if err != nil {
-			return nil, err
-		}
-		return WithSpread(Flat{Rate: r / 100}, spread), nil
-	}
-	return nil, fmt.Errorf("term: parsing into yield curve failed: unknown curve format")
 }
 
 // Marshal returns the curve file (JSON, indented) of the curve c with the

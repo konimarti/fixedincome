@@ -25,16 +25,6 @@ func TestParse(t *testing.T) {
 			&term.Spline{}, -math.Log(0.95) / 5, 0},
 		{"flat", `{"model":"flat","params":{"r":2.0},"spread_bp":-10}`, term.Flat{}, 0.019, -10},
 		{"flat without spread", `{"model":"flat","params":{"r":2.0}}`, term.Flat{}, 0.02, 0},
-		// legacy formats (percent / bp)
-		{"legacy nss", `{ "b0": -0.266372, "b1": -0.471343, "b2": 5.68789, "b3": -5.12324, "t1": 5.74881, "t2": 4.14426, "spread": 0.0 }`,
-			term.NSS{}, snb20210331.ZeroRate(5), 0},
-		{"legacy spline unsorted", `{ "maturities": [2.0, 1.0, 5.0], "discountfactors": [0.98, 0.99, 0.95], "spread": 10.0 }`,
-			&term.Spline{}, -math.Log(0.95)/5 + 0.001, 10},
-		{"legacy flat", `{ "r": 2.0, "spread": 0.0 }`, term.Flat{}, 0.02, 0},
-		{"legacy optional spread", `{ "r": 2.0 }`, term.Flat{}, 0.02, 0},
-		// most specific legacy model wins
-		{"legacy order", `{ "b0": 1.0, "b1": 0.0, "b2": 0.0, "b3": 0.0, "t1": 1.0, "t2": 1.0, "r": 5.0, "spread": 0.0 }`,
-			term.NSS{}, 0.01, 0},
 	}
 
 	for _, test := range testData {
@@ -55,6 +45,14 @@ func TestParse(t *testing.T) {
 				t.Errorf("%s: ZeroRate(5) = %v, expected %v", test.Name, r, test.Rate5)
 			}
 		}
+	}
+}
+
+func TestParse_LegacyFormatRejected(t *testing.T) {
+	_, _, err := term.Parse([]byte(`{"r": 2.0, "spread": 0.0}`))
+	want := `curve file has no "model" field (legacy format is no longer supported; see "fic curve template")`
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Errorf("got %v, want an error containing %q", err, want)
 	}
 }
 
@@ -80,9 +78,10 @@ func TestParse_Errors(t *testing.T) {
 		`{"model":"spline","knots":[1,2],"discount_factors":[0.99]}`,                 // unequal lengths
 		`{"model":"spline","knots":[2,1],"discount_factors":[0.98,0.99]}`,            // unsorted
 		`{"model":"flat","params":{"r":2.0},"knots":[1],"discount_factors":[0.99]}`,  // knots for flat
-		`{"spread": 1.0}`, // legacy unknown
-		`{"b0": 1.0, "b1": 0.0, "b2": 0.0, "b3": 0.0, "t1": 1.0, "t2": 0.0}`, // legacy invalid tau
-		`{"maturities": [1.0, 1.0], "discountfactors": [0.99, 0.98]}`,        // legacy duplicate
+		`{"spread": 1.0}`, // no model
+		`{"b0": -0.266372, "b1": -0.471343, "b2": 5.68789, "b3": -5.12324, "t1": 5.74881, "t2": 4.14426, "spread": 0.0}`, // legacy NSS
+		`{"maturities": [1.0, 2.0], "discountfactors": [0.99, 0.98]}`,                                                    // legacy spline
+		`{"r": 2.0}`, // legacy flat
 	} {
 		if _, _, err := term.Parse([]byte(data)); err == nil {
 			t.Errorf("expected error for %s", data)
@@ -137,7 +136,7 @@ func TestParse_Concurrent(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			r := float64(i)
-			c, _, err := term.Parse([]byte(fmt.Sprintf(`{"r": %v, "spread": 0.0}`, r)))
+			c, _, err := term.Parse([]byte(fmt.Sprintf(`{"model": "flat", "params": {"r": %v}, "spread_bp": 0}`, r)))
 			if err != nil {
 				errs <- err
 				return

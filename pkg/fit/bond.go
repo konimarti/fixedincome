@@ -164,7 +164,7 @@ type Options struct {
 	// integral of the squared second derivative of the zero rate,
 	// approximated at the knots; decimal rates and years). nil or a
 	// negative value selects Lambda by generalized cross-validation (the
-	// default, also of termfit), 0 is an unpenalised least-squares spline,
+	// default), 0 is an unpenalised least-squares spline,
 	// a positive value a fixed smoothing. See LambdaGCV and Lambda.
 	Lambda *float64
 	// Knots are the spline knots in years (strictly increasing, > 0); if

@@ -1,12 +1,6 @@
 # built binaries
 /fic
 /fi
-/bonds-cli
-/swaprate-cli
-/option-cli
-/termfit
-/fwdcrv
-/holee
 *.test
 *.exe
 
