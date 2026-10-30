@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Curve fit report 2021-11-26</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1b1f24;--muted:#57606a;--grid:#d8dee4;--card:#f6f8fa;--line:#d0d7de;
+--c0:#0072B2;--c1:#D55E00;--warn-bg:#fff4d6;--warn-fg:#5c4000;--warn-line:#c99a00}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa4af;--grid:#2e353c;--card:#1c2025;--line:#30363d;
+--c0:#56B4E9;--c1:#E69F00;--warn-bg:#2d2500;--warn-fg:#f2d780;--warn-line:#9a7500}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:60rem;margin:0 auto;padding:1.5rem 1rem 3rem}
+h1{font-size:1.5rem;margin:0 0 .25rem}
+h2{font-size:1.1rem;margin:2rem 0 .5rem}
+p.sub{margin:0;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.75rem;margin:1.25rem 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:.6rem .8rem}
+.card .k{font-size:.8rem;color:var(--muted)}
+.card .v{font-size:1.25rem;font-variant-numeric:tabular-nums}
+.warn{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--warn-line);border-radius:6px;padding:.5rem 1rem .5rem 2rem}
+.warn h2{margin:0 0 .25rem -1rem;font-size:1rem}
+.warn ul{margin:0;padding-left:.5rem}
+figure{margin:0}
+figcaption{font-size:.85rem;color:var(--muted);margin-top:.25rem}
+svg{width:100%;height:auto;display:block;background:var(--bg)}
+svg text{fill:var(--muted);font:11px system-ui,sans-serif}
+svg .grid{stroke:var(--grid);stroke-width:1}
+svg .axis{stroke:var(--muted);stroke-width:1}
+svg .zero{stroke:var(--fg);stroke-width:1.2}
+svg .m0{--c:var(--c0)} svg .m1{--c:var(--c1)}
+svg .ln{fill:none;stroke:var(--c);stroke-width:2}
+svg .ln.d{stroke-dasharray:6 3}
+svg .pt{fill:var(--c);fill-opacity:.8;stroke:var(--bg);stroke-width:1}
+svg .obs{fill:none;stroke:var(--muted);stroke-width:1.4}
+svg text.lbl{fill:var(--fg)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+caption{text-align:left;font-weight:600;padding:.25rem 0}
+th,td{padding:.25rem .6rem;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{background:var(--card);font-weight:600}
+th:first-child,td:first-child,td.l,th.l{text-align:left}
+tbody tr:hover{background:var(--card)}
+.sw{display:inline-block;width:.7rem;height:.7rem;border-radius:50%;margin-right:.35rem;vertical-align:baseline}
+.s0{background:var(--c0)} .s1{background:var(--c1);border-radius:0;transform:rotate(45deg) scale(.85)}
+</style>
+</head>
+<body>
+<main>
+<h1>Curve fit report</h1>
+<p class="sub">As of 2021-11-26 &middot; bonds: bonds_2021-11-26.csv</p>
+<div class="cards">
+<div class="card"><div class="k">As-of date</div><div class="v">2021-11-26</div></div>
+<div class="card"><div class="k">Valid bonds</div><div class="v">39</div></div>
+<div class="card"><div class="k"><span class="sw s0"></span>nss: yield error RMSE</div><div class="v">2.035 bp</div><div class="k">35 bonds used</div></div>
+<div class="card"><div class="k"><span class="sw s1"></span>spline: yield error RMSE</div><div class="v">1.759 bp</div><div class="k">35 bonds used</div></div>
+</div>
+<div class="warn" role="note"><h2>Fit warnings</h2>
+<ul>
+<li>IQT713061070: time to maturity 0.016y below the minimum 0.100y, dropped</li>
+<li>IQT698578313: time to maturity 0.036y below the minimum 0.100y, dropped</li>
+<li>IQT700018280: time to maturity 0.055y below the minimum 0.100y, dropped</li>
+<li>IQT697800635: time to maturity 0.074y below the minimum 0.100y, dropped</li>
+<li>nss: tau2 = 30 at the upper bound 30: the long end beyond the longest maturity 42.6y is set by the bound, not the data</li>
+<li>nss: B0 (long-run rate) poorly determined (standard error 70bp): extrapolation beyond the longest maturity 42.6y is unidentified</li>
+<li>nss: alternative local solution with objective 7.26813e-07 (best 7.24965e-07, &#43;0.25%), zero rates differ by up to 2.4bp at 42.6y: b = (-0.3717, -0.3887, 2.0264, -0.8627)%, tau = (6.675, 1.767)</li>
+</ul></div>
+
+<h2>Zero curve</h2>
+<figure>
+<svg viewBox="0 0 720 340" role="img" aria-labelledby="plot-zero-t plot-zero-d" xmlns="http://www.w3.org/2000/svg">
+<title id="plot-zero-t">Fitted zero curves</title>
+<desc id="plot-zero-d">Zero rates in percent of the model nss and spline from 0 to 42.61 years with the market yields of the bonds.</desc>
+<line class="grid" x1="56.00" x2="704.00" y1="296.00" y2="296.00"/>
+<text x="50.00" y="296.00" text-anchor="end" dominant-baseline="middle">-1.0</text>
+<line class="grid" x1="56.00" x2="704.00" y1="251.67" y2="251.67"/>
+<text x="50.00" y="251.67" text-anchor="end" dominant-baseline="middle">-0.8</text>
+<line class="grid" x1="56.00" x2="704.00" y1="207.33" y2="207.33"/>
+<text x="50.00" y="207.33" text-anchor="end" dominant-baseline="middle">-0.6</text>
+<line class="grid" x1="56.00" x2="704.00" y1="163.00" y2="163.00"/>
+<text x="50.00" y="163.00" text-anchor="end" dominant-baseline="middle">-0.4</text>
+<line class="grid" x1="56.00" x2="704.00" y1="118.67" y2="118.67"/>
+<text x="50.00" y="118.67" text-anchor="end" dominant-baseline="middle">-0.2</text>
+<line class="grid" x1="56.00" x2="704.00" y1="74.33" y2="74.33"/>
+<text x="50.00" y="74.33" text-anchor="end" dominant-baseline="middle">0.0</text>
+<line class="grid" x1="56.00" x2="704.00" y1="30.00" y2="30.00"/>
+<text x="50.00" y="30.00" text-anchor="end" dominant-baseline="middle">0.2</text>
+<line class="grid" x1="56.00" x2="56.00" y1="296.00" y2="30.00"/>
+<text x="56.00" y="312.00" text-anchor="middle">0</text>
+<line class="grid" x1="203.65" x2="203.65" y1="296.00" y2="30.00"/>
+<text x="203.65" y="312.00" text-anchor="middle">10</text>
+<line class="grid" x1="351.31" x2="351.31" y1="296.00" y2="30.00"/>
+<text x="351.31" y="312.00" text-anchor="middle">20</text>
+<line class="grid" x1="498.96" x2="498.96" y1="296.00" y2="30.00"/>
+<text x="498.96" y="312.00" text-anchor="middle">30</text>
+<line class="grid" x1="646.61" x2="646.61" y1="296.00" y2="30.00"/>
+<text x="646.61" y="312.00" text-anchor="middle">40</text>
+<line class="axis" x1="56.00" x2="704.00" y1="296.00" y2="296.00"/>
+<line class="axis" x1="56.00" x2="56.00" y1="296.00" y2="30.00"/>
+<text x="380.00" y="334.00" text-anchor="middle">years to maturity</text>
+<text x="12" y="163.00" text-anchor="middle" transform="rotate(-90 12 163.00)">zero rate, cc (%)</text>
+<g class="m0"><path class="ln" fill="none" d="M56.00 242.89L61.24 244.83L66.49 244.26L71.73 241.70L76.97 237.61L82.21 232.35L87.46 226.21L92.70 219.46L97.94 212.30L103.18 204.89L108.43 197.38L113.67 189.88L118.91 182.46L124.16 175.21L129.40 168.18L134.64 161.40L139.88 154.90L145.13 148.71L150.37 142.84L155.61 137.29L160.85 132.06L166.10 127.17L171.34 122.59L176.58 118.32L181.83 114.36L187.07 110.69L192.31 107.31L197.55 104.19L202.80 101.33L208.04 98.71L213.28 96.33L218.52 94.17L223.77 92.21L229.01 90.45L234.25 88.87L239.50 87.47L244.74 86.22L249.98 85.12L255.22 84.17L260.47 83.34L265.71 82.64L270.95 82.05L276.19 81.56L281.44 81.17L286.68 80.87L291.92 80.66L297.17 80.52L302.41 80.45L307.65 80.44L312.89 80.50L318.14 80.61L323.38 80.77L328.62 80.97L333.86 81.22L339.11 81.50L344.35 81.82L349.59 82.17L354.83 82.54L360.08 82.94L365.32 83.36L370.56 83.80L375.81 84.25L381.05 84.72L386.29 85.20L391.53 85.69L396.78 86.19L402.02 86.70L407.26 87.21L412.50 87.72L417.75 88.24L422.99 88.76L428.23 89.27L433.48 89.79L438.72 90.30L443.96 90.82L449.20 91.32L454.45 91.82L459.69 92.32L464.93 92.81L470.17 93.29L475.42 93.76L480.66 94.23L485.90 94.69L491.15 95.13L496.39 95.57L501.63 96.00L506.87 96.42L512.12 96.82L517.36 97.22L522.60 97.61L527.84 97.98L533.09 98.34L538.33 98.69L543.57 99.03L548.82 99.35L554.06 99.67L559.30 99.97L564.54 100.26L569.79 100.53L575.03 100.80L580.27 101.05L585.51 101.28L590.76 101.51L596.00 101.72L601.24 101.92L606.49 102.11L611.73 102.28L616.97 102.44L622.21 102.59L627.46 102.72L632.70 102.85L637.94 102.96L643.18 103.05L648.43 103.14L653.67 103.21L658.91 103.27L664.16 103.32L669.40 103.36L674.64 103.38L679.88 103.39L685.13 103.40"><title>nss</title></path></g>
+<g class="m1"><path class="ln d" fill="none" d="M56.00 242.90L61.24 248.10L66.49 247.01L71.73 240.62L76.97 233.13L82.21 225.59L87.46 218.33L92.70 211.51L97.94 205.12L103.18 199.02L108.43 193.08L113.67 187.22L118.91 181.40L124.16 175.59L129.40 169.74L134.64 163.86L139.88 157.93L145.13 152.03L150.37 146.21L155.61 140.54L160.85 135.04L166.10 129.76L171.34 124.72L176.58 119.95L181.83 115.45L187.07 111.25L192.31 107.37L197.55 103.80L202.80 100.57L208.04 97.68L213.28 95.12L218.52 92.88L223.77 90.92L229.01 89.20L234.25 87.71L239.50 86.42L244.74 85.30L249.98 84.35L255.22 83.55L260.47 82.88L265.71 82.33L270.95 81.88L276.19 81.53L281.44 81.26L286.68 81.08L291.92 80.96L297.17 80.91L302.41 80.92L307.65 80.97L312.89 81.07L318.14 81.20L323.38 81.38L328.62 81.58L333.86 81.81L339.11 82.06L344.35 82.33L349.59 82.61L354.83 82.91L360.08 83.22L365.32 83.55L370.56 83.88L375.81 84.23L381.05 84.59L386.29 84.95L391.53 85.33L396.78 85.71L402.02 86.09L407.26 86.49L412.50 86.88L417.75 87.29L422.99 87.70L428.23 88.11L433.48 88.52L438.72 88.94L443.96 89.36L449.20 89.78L454.45 90.21L459.69 90.63L464.93 91.06L470.17 91.49L475.42 91.91L480.66 92.34L485.90 92.77L491.15 93.20L496.39 93.63L501.63 94.05L506.87 94.48L512.12 94.90L517.36 95.32L522.60 95.74L527.84 96.16L533.09 96.58L538.33 97.00L543.57 97.41L548.82 97.82L554.06 98.22L559.30 98.63L564.54 99.03L569.79 99.43L575.03 99.82L580.27 100.22L585.51 100.60L590.76 100.99L596.00 101.37L601.24 101.75L606.49 102.12L611.73 102.49L616.97 102.86L622.21 103.22L627.46 103.57L632.70 103.93L637.94 104.28L643.18 104.62L648.43 104.96L653.67 105.29L658.91 105.62L664.16 105.95L669.40 106.27L674.64 106.59L679.88 106.90L685.13 107.20"><title>spline</title></path></g>
+<circle class="obs" fill="none" cx="57.66" cy="242.00" r="3.5"><title>IQT700018281: 0.11 y, market yield -0.756 %</title></circle>
+<circle class="obs" fill="none" cx="57.94" cy="244.49" r="3.5"><title>IQT699548162: 0.13 y, market yield -0.768 %</title></circle>
+<circle class="obs" fill="none" cx="58.22" cy="244.88" r="3.5"><title>IQT697951491: 0.15 y, market yield -0.769 %</title></circle>
+<circle class="obs" fill="none" cx="58.51" cy="246.48" r="3.5"><title>IQT697951492: 0.17 y, market yield -0.777 %</title></circle>
+<circle class="obs" fill="none" cx="58.79" cy="247.75" r="3.5"><title>IQT699547516: 0.19 y, market yield -0.782 %</title></circle>
+<circle class="obs" fill="none" cx="59.07" cy="248.78" r="3.5"><title>IQT698578306: 0.21 y, market yield -0.787 %</title></circle>
+<circle class="obs" fill="none" cx="59.36" cy="248.67" r="3.5"><title>IQT697951493: 0.23 y, market yield -0.786 %</title></circle>
+<circle class="obs" fill="none" cx="59.64" cy="249.46" r="3.5"><title>IQT698408695: 0.25 y, market yield -0.790 %</title></circle>
+<circle class="obs" fill="none" cx="61.06" cy="251.44" r="3.5"><title>IQT700018310: 0.34 y, market yield -0.799 %</title></circle>
+<circle class="obs" fill="none" cx="62.76" cy="252.30" r="3.5"><title>IQT699548161: 0.46 y, market yield -0.803 %</title></circle>
+<circle class="obs" fill="none" cx="63.28" cy="234.26" r="3.5"><title>IQT134686491: 0.49 y, market yield -0.721 %</title></circle>
+<circle class="obs" fill="none" cx="64.74" cy="253.33" r="3.5"><title>IQT698578307: 0.59 y, market yield -0.807 %</title></circle>
+<circle class="obs" fill="none" cx="73.88" cy="239.11" r="3.5"><title>IQT31831807: 1.21 y, market yield -0.743 %</title></circle>
+<circle class="obs" fill="none" cx="93.54" cy="212.36" r="3.5"><title>IQT206779127: 2.54 y, market yield -0.623 %</title></circle>
+<circle class="obs" fill="none" cx="110.05" cy="190.69" r="3.5"><title>IQT242709270: 3.66 y, market yield -0.525 %</title></circle>
+<circle class="obs" fill="none" cx="122.50" cy="174.16" r="3.5"><title>IQT312562457: 4.50 y, market yield -0.450 %</title></circle>
+<circle class="obs" fill="none" cx="138.48" cy="161.45" r="3.5"><title>IQT36526153: 5.59 y, market yield -0.393 %</title></circle>
+<circle class="obs" fill="none" cx="150.05" cy="150.50" r="3.5"><title>IQT32154850: 6.37 y, market yield -0.344 %</title></circle>
+<circle class="obs" fill="none" cx="167.85" cy="131.71" r="3.5"><title>IQT368102103: 7.58 y, market yield -0.259 %</title></circle>
+<circle class="obs" fill="none" cx="181.57" cy="119.38" r="3.5"><title>IQT301543567: 8.50 y, market yield -0.203 %</title></circle>
+<circle class="obs" fill="none" cx="181.57" cy="118.75" r="3.5"><title>IQT1757558256: 8.50 y, market yield -0.200 %</title></circle>
+<circle class="obs" fill="none" cx="197.38" cy="108.48" r="3.5"><title>IQT134303960: 9.58 y, market yield -0.154 %</title></circle>
+<circle class="obs" fill="none" cx="212.39" cy="98.06" r="3.5"><title>IQT570115477: 10.59 y, market yield -0.107 %</title></circle>
+<circle class="obs" fill="none" cx="223.92" cy="93.35" r="3.5"><title>IQT31830796: 11.37 y, market yield -0.086 %</title></circle>
+<circle class="obs" fill="none" cx="256.53" cy="84.53" r="3.5"><title>IQT717813216: 13.58 y, market yield -0.046 %</title></circle>
+<circle class="obs" fill="none" cx="256.53" cy="86.24" r="3.5"><title>IQT1757558257: 13.58 y, market yield -0.054 %</title></circle>
+<circle class="obs" fill="none" cx="267.00" cy="80.00" r="3.5"><title>IQT31833085: 14.29 y, market yield -0.026 %</title></circle>
+<circle class="obs" fill="none" cx="286.26" cy="80.60" r="3.5"><title>IQT209137496: 15.59 y, market yield -0.028 %</title></circle>
+<circle class="obs" fill="none" cx="316.88" cy="87.31" r="3.5"><title>IQT628924731: 17.67 y, market yield -0.059 %</title></circle>
+<circle class="obs" fill="none" cx="357.78" cy="84.44" r="3.5"><title>IQT204635012: 20.44 y, market yield -0.046 %</title></circle>
+<circle class="obs" fill="none" cx="404.50" cy="87.39" r="3.5"><title>IQT529523873: 23.60 y, market yield -0.059 %</title></circle>
+<circle class="obs" fill="none" cx="456.61" cy="87.82" r="3.5"><title>IQT31835353: 27.13 y, market yield -0.061 %</title></circle>
+<circle class="obs" fill="none" cx="550.82" cy="101.59" r="3.5"><title>IQT430070050: 33.51 y, market yield -0.123 %</title></circle>
+<circle class="obs" fill="none" cx="595.40" cy="104.00" r="3.5"><title>IQT337416277: 36.53 y, market yield -0.134 %</title></circle>
+<circle class="obs" fill="none" cx="685.13" cy="99.46" r="3.5"><title>IQT266829363: 42.61 y, market yield -0.113 %</title></circle>
+<g class="m0"><line class="ln" x1="56.00" x2="78.00" y1="14.00" y2="14.00"/><text class="lbl" x="84.00" y="14.00" dominant-baseline="middle">nss</text></g>
+<g class="m1"><line class="ln d" x1="186.00" x2="208.00" y1="14.00" y2="14.00"/><text class="lbl" x="214.00" y="14.00" dominant-baseline="middle">spline</text></g>
+<circle class="obs" fill="none" cx="327.00" cy="14.00" r="3.5"/><text class="lbl" x="344.00" y="14.00" dominant-baseline="middle">market yield</text>
+</svg>
+<figcaption>Fitted zero rates (continuously compounded, percent) by maturity. Open circles are the yields of the bonds at their market prices.</figcaption>
+</figure>
+<h2>Yield errors</h2>
+<figure>
+<svg viewBox="0 0 720 340" role="img" aria-labelledby="plot-err-t plot-err-d" xmlns="http://www.w3.org/2000/svg">
+<title id="plot-err-t">Yield errors per bond</title>
+<desc id="plot-err-d">Model yield minus market yield in basis points against the years to maturity of each bond.</desc>
+<line class="grid" x1="56.00" x2="704.00" y1="296.00" y2="296.00"/>
+<text x="50.00" y="296.00" text-anchor="end" dominant-baseline="middle">-10</text>
+<line class="grid" x1="56.00" x2="704.00" y1="207.33" y2="207.33"/>
+<text x="50.00" y="207.33" text-anchor="end" dominant-baseline="middle">-5</text>
+<line class="grid" x1="56.00" x2="704.00" y1="118.67" y2="118.67"/>
+<text x="50.00" y="118.67" text-anchor="end" dominant-baseline="middle">0</text>
+<line class="grid" x1="56.00" x2="704.00" y1="30.00" y2="30.00"/>
+<text x="50.00" y="30.00" text-anchor="end" dominant-baseline="middle">5</text>
+<line class="grid" x1="56.00" x2="56.00" y1="296.00" y2="30.00"/>
+<text x="56.00" y="312.00" text-anchor="middle">0</text>
+<line class="grid" x1="203.65" x2="203.65" y1="296.00" y2="30.00"/>
+<text x="203.65" y="312.00" text-anchor="middle">10</text>
+<line class="grid" x1="351.31" x2="351.31" y1="296.00" y2="30.00"/>
+<text x="351.31" y="312.00" text-anchor="middle">20</text>
+<line class="grid" x1="498.96" x2="498.96" y1="296.00" y2="30.00"/>
+<text x="498.96" y="312.00" text-anchor="middle">30</text>
+<line class="grid" x1="646.61" x2="646.61" y1="296.00" y2="30.00"/>
+<text x="646.61" y="312.00" text-anchor="middle">40</text>
+<line class="axis" x1="56.00" x2="704.00" y1="296.00" y2="296.00"/>
+<line class="axis" x1="56.00" x2="56.00" y1="296.00" y2="30.00"/>
+<text x="380.00" y="334.00" text-anchor="middle">years to maturity</text>
+<text x="12" y="163.00" text-anchor="middle" transform="rotate(-90 12 163.00)">yield error (bp)</text>
+<line class="zero" x1="56.00" x2="704.00" y1="118.67" y2="118.67"/>
+<g class="m0">
+<circle class="pt" cx="57.66" cy="133.18" r="3.5"><title>IQT700018281 (nss): 0.11 y, error -0.818 bp</title></circle>
+<circle class="pt" cx="57.94" cy="114.25" r="3.5"><title>IQT699548162 (nss): 0.13 y, error 0.249 bp</title></circle>
+<circle class="pt" cx="58.22" cy="112.12" r="3.5"><title>IQT697951491 (nss): 0.15 y, error 0.369 bp</title></circle>
+<circle class="pt" cx="58.51" cy="100.21" r="3.5"><title>IQT697951492 (nss): 0.17 y, error 1.041 bp</title></circle>
+<circle class="pt" cx="58.79" cy="90.86" r="3.5"><title>IQT699547516 (nss): 0.19 y, error 1.568 bp</title></circle>
+<circle class="pt" cx="59.07" cy="83.33" r="3.5"><title>IQT698578306 (nss): 0.21 y, error 1.992 bp</title></circle>
+<circle class="pt" cx="59.36" cy="84.95" r="3.5"><title>IQT697951493 (nss): 0.23 y, error 1.901 bp</title></circle>
+<circle class="pt" cx="59.64" cy="79.19" r="3.5"><title>IQT698408695 (nss): 0.25 y, error 2.226 bp</title></circle>
+<circle class="pt" cx="61.06" cy="65.58" r="3.5"><title>IQT700018310 (nss): 0.34 y, error 2.994 bp</title></circle>
+<circle class="pt" cx="62.76" cy="59.46" r="3.5"><title>IQT699548161 (nss): 0.46 y, error 3.338 bp</title></circle>
+<circle class="pt" cx="63.28" cy="203.57" r="3.5"><title>IQT134686491 (nss): 0.49 y, error -4.788 bp</title></circle>
+<circle class="pt" cx="64.74" cy="49.57" r="3.5"><title>IQT698578307 (nss): 0.59 y, error 3.896 bp</title></circle>
+<circle class="pt" cx="73.88" cy="127.53" r="3.5"><title>IQT31831807 (nss): 1.21 y, error -0.500 bp</title></circle>
+<circle class="pt" cx="93.54" cy="168.03" r="3.5"><title>IQT206779127 (nss): 2.54 y, error -2.784 bp</title></circle>
+<circle class="pt" cx="110.05" cy="158.46" r="3.5"><title>IQT242709270 (nss): 3.66 y, error -2.244 bp</title></circle>
+<circle class="pt" cx="122.50" cy="151.58" r="3.5"><title>IQT312562457 (nss): 4.50 y, error -1.856 bp</title></circle>
+<circle class="pt" cx="138.48" cy="103.47" r="3.5"><title>IQT36526153 (nss): 5.59 y, error 0.857 bp</title></circle>
+<circle class="pt" cx="150.05" cy="95.07" r="3.5"><title>IQT32154850 (nss): 6.37 y, error 1.330 bp</title></circle>
+<circle class="pt" cx="167.85" cy="69.80" r="3.5"><title>IQT368102103 (nss): 7.58 y, error 2.756 bp</title></circle>
+<circle class="pt" cx="181.57" cy="87.29" r="3.5"><title>IQT301543567 (nss): 8.50 y, error 1.769 bp</title></circle>
+<circle class="pt" cx="181.57" cy="92.30" r="3.5"><title>IQT1757558256 (nss): 8.50 y, error 1.487 bp</title></circle>
+<circle class="pt" cx="197.38" cy="118.81" r="3.5"><title>IQT134303960 (nss): 9.58 y, error -0.008 bp</title></circle>
+<circle class="pt" cx="212.39" cy="116.78" r="3.5"><title>IQT570115477 (nss): 10.59 y, error 0.107 bp</title></circle>
+<circle class="pt" cx="223.92" cy="163.09" r="3.5"><title>IQT31830796 (nss): 11.37 y, error -2.505 bp</title></circle>
+<circle class="pt" cx="256.53" cy="118.79" r="3.5"><title>IQT717813216 (nss): 13.58 y, error -0.007 bp</title></circle>
+<circle class="pt" cx="256.53" cy="105.16" r="3.5"><title>IQT1757558257 (nss): 13.58 y, error 0.762 bp</title></circle>
+<circle class="pt" cx="267.00" cy="179.02" r="3.5"><title>IQT31833085 (nss): 14.29 y, error -3.403 bp</title></circle>
+<circle class="pt" cx="286.26" cy="142.12" r="3.5"><title>IQT209137496 (nss): 15.59 y, error -1.323 bp</title></circle>
+<circle class="pt" cx="316.88" cy="64.78" r="3.5"><title>IQT628924731 (nss): 17.67 y, error 3.039 bp</title></circle>
+<circle class="pt" cx="357.78" cy="121.69" r="3.5"><title>IQT204635012 (nss): 20.44 y, error -0.171 bp</title></circle>
+<circle class="pt" cx="404.50" cy="118.63" r="3.5"><title>IQT529523873 (nss): 23.60 y, error 0.002 bp</title></circle>
+<circle class="pt" cx="456.61" cy="156.63" r="3.5"><title>IQT31835353 (nss): 27.13 y, error -2.141 bp</title></circle>
+<circle class="pt" cx="550.82" cy="98.71" r="3.5"><title>IQT430070050 (nss): 33.51 y, error 1.126 bp</title></circle>
+<circle class="pt" cx="595.40" cy="96.19" r="3.5"><title>IQT337416277 (nss): 36.53 y, error 1.268 bp</title></circle>
+<circle class="pt" cx="685.13" cy="136.33" r="3.5"><title>IQT266829363 (nss): 42.61 y, error -0.996 bp</title></circle>
+</g>
+<g class="m1">
+<path class="pt" d="M57.66 133.21l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT700018281 (spline): 0.11 y, error -1.074 bp</title></path>
+<path class="pt" d="M57.94 116.01l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT699548162 (spline): 0.13 y, error -0.104 bp</title></path>
+<path class="pt" d="M58.22 115.59l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT697951491 (spline): 0.15 y, error -0.080 bp</title></path>
+<path class="pt" d="M58.51 105.38l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT697951492 (spline): 0.17 y, error 0.495 bp</title></path>
+<path class="pt" d="M58.79 97.76l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT699547516 (spline): 0.19 y, error 0.925 bp</title></path>
+<path class="pt" d="M59.07 91.99l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT698578306 (spline): 0.21 y, error 1.251 bp</title></path>
+<path class="pt" d="M59.36 95.39l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT697951493 (spline): 0.23 y, error 1.059 bp</title></path>
+<path class="pt" d="M59.64 91.47l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT698408695 (spline): 0.25 y, error 1.280 bp</title></path>
+<path class="pt" d="M61.06 86.30l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT700018310 (spline): 0.34 y, error 1.571 bp</title></path>
+<path class="pt" d="M62.76 85.97l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT699548161 (spline): 0.46 y, error 1.590 bp</title></path>
+<path class="pt" d="M63.28 230.58l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT134686491 (spline): 0.49 y, error -6.565 bp</title></path>
+<path class="pt" d="M64.74 74.52l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT698578307 (spline): 0.59 y, error 2.236 bp</title></path>
+<path class="pt" d="M73.88 102.47l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT31831807 (spline): 1.21 y, error 0.660 bp</title></path>
+<path class="pt" d="M93.54 100.93l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT206779127 (spline): 2.54 y, error 0.747 bp</title></path>
+<path class="pt" d="M110.05 123.31l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT242709270 (spline): 3.66 y, error -0.516 bp</title></path>
+<path class="pt" d="M122.50 145.76l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT312562457 (spline): 4.50 y, error -1.781 bp</title></path>
+<path class="pt" d="M138.48 118.94l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT36526153 (spline): 5.59 y, error -0.269 bp</title></path>
+<path class="pt" d="M150.05 113.77l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT32154850 (spline): 6.37 y, error 0.022 bp</title></path>
+<path class="pt" d="M167.85 84.90l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT368102103 (spline): 7.58 y, error 1.650 bp</title></path>
+<path class="pt" d="M181.57 91.63l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT301543567 (spline): 8.50 y, error 1.271 bp</title></path>
+<path class="pt" d="M181.57 96.64l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT1757558256 (spline): 8.50 y, error 0.988 bp</title></path>
+<path class="pt" d="M197.38 111.99l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT134303960 (spline): 9.58 y, error 0.122 bp</title></path>
+<path class="pt" d="M212.39 103.08l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT570115477 (spline): 10.59 y, error 0.625 bp</title></path>
+<path class="pt" d="M223.92 150.03l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT31830796 (spline): 11.37 y, error -2.022 bp</title></path>
+<path class="pt" d="M256.53 109.71l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT717813216 (spline): 13.58 y, error 0.251 bp</title></path>
+<path class="pt" d="M256.53 96.08l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT1757558257 (spline): 13.58 y, error 1.020 bp</title></path>
+<path class="pt" d="M267.00 172.32l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT31833085 (spline): 14.29 y, error -3.279 bp</title></path>
+<path class="pt" d="M286.26 138.91l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT209137496 (spline): 15.59 y, error -1.395 bp</title></path>
+<path class="pt" d="M316.88 65.00l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT628924731 (spline): 17.67 y, error 2.773 bp</title></path>
+<path class="pt" d="M357.78 119.51l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT204635012 (spline): 20.44 y, error -0.301 bp</title></path>
+<path class="pt" d="M404.50 109.15l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT529523873 (spline): 23.60 y, error 0.283 bp</title></path>
+<path class="pt" d="M456.61 142.73l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT31835353 (spline): 27.13 y, error -1.611 bp</title></path>
+<path class="pt" d="M550.82 82.61l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT430070050 (spline): 33.51 y, error 1.780 bp</title></path>
+<path class="pt" d="M595.40 88.42l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT337416277 (spline): 36.53 y, error 1.452 bp</title></path>
+<path class="pt" d="M685.13 153.04l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>IQT266829363 (spline): 42.61 y, error -2.192 bp</title></path>
+</g>
+<g class="m0"><circle class="pt" cx="67.00" cy="14.00" r="3.5"><title>nss</title></circle>
+<text class="lbl" x="84.00" y="14.00" dominant-baseline="middle">nss</text></g>
+<g class="m1"><path class="pt" d="M197.00 9.50l4.50 4.50l-4.50 4.50l-4.50 -4.50z"><title>spline</title></path>
+<text class="lbl" x="214.00" y="14.00" dominant-baseline="middle">spline</text></g>
+</svg>
+<figcaption>Model yield minus market yield per bond in basis points by time to maturity.</figcaption>
+</figure>
+<h2>Parameters</h2>
+<div class="tw"><table>
+<caption>nss</caption>
+<thead><tr><th scope="col">Parameter</th><th scope="col">Value</th><th scope="col">Unit</th></tr></thead>
+<tbody>
+<tr><td>b0</td><td>1.7041504</td><td class="l">%</td></tr>
+<tr><td>b1</td><td>-2.464575</td><td class="l">%</td></tr>
+<tr><td>b2</td><td>-2.2356896</td><td class="l">%</td></tr>
+<tr><td>b3</td><td>-5.3387018</td><td class="l">%</td></tr>
+<tr><td>t1</td><td>2.4906643</td><td class="l">years</td></tr>
+<tr><td>t2</td><td>30</td><td class="l">years</td></tr>
+</tbody>
+</table></div>
+<div class="tw"><table>
+<caption>spline</caption>
+<thead><tr><th scope="col">Parameter</th><th scope="col">Value</th><th scope="col">Unit</th></tr></thead>
+<tbody>
+<tr><td>zero rate at 0.05616 y</td><td>-0.76244539</td><td class="l">%</td></tr>
+<tr><td>zero rate at 0.1123 y</td><td>-0.76712368</td><td class="l">%</td></tr>
+<tr><td>zero rate at 0.2322 y</td><td>-0.77622592</td><td class="l">%</td></tr>
+<tr><td>zero rate at 0.544 y</td><td>-0.78654203</td><td class="l">%</td></tr>
+<tr><td>zero rate at 2.435 y</td><td>-0.62306613</td><td class="l">%</td></tr>
+<tr><td>zero rate at 5.332 y</td><td>-0.40339221</td><td class="l">%</td></tr>
+<tr><td>zero rate at 10.3 y</td><td>-0.10524773</td><td class="l">%</td></tr>
+<tr><td>zero rate at 19.52 y</td><td>-0.036026182</td><td class="l">%</td></tr>
+<tr><td>zero rate at 42.61 y</td><td>-0.14828036</td><td class="l">%</td></tr>
+<tr><td>lambda</td><td>0.031622777</td><td class="l"></td></tr>
+</tbody>
+</table></div>
+
+<h2>Residuals</h2>
+<div class="tw"><table>
+<caption>Per-bond residuals (yields continuously compounded, percent)</caption>
+<thead><tr><th scope="col">Model</th><th scope="col">Bond</th><th scope="col">Maturity</th><th scope="col">Years to maturity</th><th scope="col">Market yield %</th><th scope="col">Model yield %</th><th scope="col">Error bp</th></tr></thead>
+<tbody>
+<tr><td class="l">nss</td><td class="l">IQT700018281</td><td>2022-01-06</td><td>0.1123</td><td>-0.7564</td><td>-0.7646</td><td>-0.818</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT699548162</td><td>2022-01-13</td><td>0.1315</td><td>-0.7676</td><td>-0.7651</td><td>0.249</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT697951491</td><td>2022-01-20</td><td>0.1507</td><td>-0.7694</td><td>-0.7657</td><td>0.369</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT697951492</td><td>2022-01-27</td><td>0.1699</td><td>-0.7766</td><td>-0.7662</td><td>1.041</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT699547516</td><td>2022-02-03</td><td>0.1890</td><td>-0.7823</td><td>-0.7666</td><td>1.568</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT698578306</td><td>2022-02-10</td><td>0.2082</td><td>-0.7870</td><td>-0.7671</td><td>1.992</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT697951493</td><td>2022-02-17</td><td>0.2274</td><td>-0.7865</td><td>-0.7675</td><td>1.901</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT698408695</td><td>2022-02-24</td><td>0.2466</td><td>-0.7901</td><td>-0.7678</td><td>2.226</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT700018310</td><td>2022-03-31</td><td>0.3425</td><td>-0.7990</td><td>-0.7690</td><td>2.994</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT699548161</td><td>2022-05-12</td><td>0.4575</td><td>-0.8028</td><td>-0.7695</td><td>3.338</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT134686491</td><td>2022-05-25</td><td>0.4932</td><td>-0.7215</td><td>-0.7693</td><td>-4.788</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT698578307</td><td>2022-06-30</td><td>0.5918</td><td>-0.8075</td><td>-0.7685</td><td>3.896</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT31831807</td><td>2023-02-11</td><td>1.2110</td><td>-0.7433</td><td>-0.7483</td><td>-0.500</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT206779127</td><td>2024-06-11</td><td>2.5425</td><td>-0.6227</td><td>-0.6505</td><td>-2.784</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT242709270</td><td>2025-07-24</td><td>3.6603</td><td>-0.5249</td><td>-0.5473</td><td>-2.244</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT312562457</td><td>2026-05-28</td><td>4.5041</td><td>-0.4503</td><td>-0.4689</td><td>-1.856</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT36526153</td><td>2027-06-27</td><td>5.5863</td><td>-0.3930</td><td>-0.3844</td><td>0.857</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT32154850</td><td>2028-04-08</td><td>6.3699</td><td>-0.3436</td><td>-0.3303</td><td>1.330</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT368102103</td><td>2029-06-22</td><td>7.5753</td><td>-0.2588</td><td>-0.2313</td><td>2.756</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT301543567</td><td>2030-05-27</td><td>8.5041</td><td>-0.2032</td><td>-0.1855</td><td>1.769</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT1757558256</td><td>2030-05-27</td><td>8.5041</td><td>-0.2004</td><td>-0.1855</td><td>1.487</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT134303960</td><td>2031-06-22</td><td>9.5753</td><td>-0.1540</td><td>-0.1541</td><td>-0.008</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT570115477</td><td>2032-06-27</td><td>10.5918</td><td>-0.1070</td><td>-0.1059</td><td>0.107</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT31830796</td><td>2033-04-08</td><td>11.3726</td><td>-0.0858</td><td>-0.1108</td><td>-2.505</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT717813216</td><td>2035-06-23</td><td>13.5808</td><td>-0.0460</td><td>-0.0461</td><td>-0.007</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT1757558257</td><td>2035-06-23</td><td>13.5808</td><td>-0.0537</td><td>-0.0461</td><td>0.762</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT31833085</td><td>2036-03-08</td><td>14.2904</td><td>-0.0255</td><td>-0.0596</td><td>-3.403</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT209137496</td><td>2037-06-27</td><td>15.5945</td><td>-0.0283</td><td>-0.0415</td><td>-1.323</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT628924731</td><td>2039-07-24</td><td>17.6685</td><td>-0.0586</td><td>-0.0282</td><td>3.039</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT204635012</td><td>2042-04-30</td><td>20.4384</td><td>-0.0456</td><td>-0.0473</td><td>-0.171</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT529523873</td><td>2045-06-28</td><td>23.6027</td><td>-0.0589</td><td>-0.0589</td><td>0.002</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT31835353</td><td>2049-01-06</td><td>27.1315</td><td>-0.0609</td><td>-0.0823</td><td>-2.141</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT430070050</td><td>2055-05-24</td><td>33.5123</td><td>-0.1230</td><td>-0.1117</td><td>1.126</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT337416277</td><td>2058-05-30</td><td>36.5315</td><td>-0.1338</td><td>-0.1211</td><td>1.268</td></tr>
+<tr><td class="l">nss</td><td class="l">IQT266829363</td><td>2064-06-25</td><td>42.6082</td><td>-0.1134</td><td>-0.1233</td><td>-0.996</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT700018281</td><td>2022-01-06</td><td>0.1123</td><td>-0.7564</td><td>-0.7671</td><td>-1.074</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT699548162</td><td>2022-01-13</td><td>0.1315</td><td>-0.7676</td><td>-0.7687</td><td>-0.104</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT697951491</td><td>2022-01-20</td><td>0.1507</td><td>-0.7694</td><td>-0.7702</td><td>-0.080</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT697951492</td><td>2022-01-27</td><td>0.1699</td><td>-0.7766</td><td>-0.7716</td><td>0.495</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT699547516</td><td>2022-02-03</td><td>0.1890</td><td>-0.7823</td><td>-0.7731</td><td>0.925</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT698578306</td><td>2022-02-10</td><td>0.2082</td><td>-0.7870</td><td>-0.7745</td><td>1.251</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT697951493</td><td>2022-02-17</td><td>0.2274</td><td>-0.7865</td><td>-0.7759</td><td>1.059</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT698408695</td><td>2022-02-24</td><td>0.2466</td><td>-0.7901</td><td>-0.7773</td><td>1.280</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT700018310</td><td>2022-03-31</td><td>0.3425</td><td>-0.7990</td><td>-0.7833</td><td>1.571</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT699548161</td><td>2022-05-12</td><td>0.4575</td><td>-0.8028</td><td>-0.7869</td><td>1.590</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT134686491</td><td>2022-05-25</td><td>0.4932</td><td>-0.7215</td><td>-0.7871</td><td>-6.565</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT698578307</td><td>2022-06-30</td><td>0.5918</td><td>-0.8075</td><td>-0.7851</td><td>2.236</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT31831807</td><td>2023-02-11</td><td>1.2110</td><td>-0.7433</td><td>-0.7367</td><td>0.660</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT206779127</td><td>2024-06-11</td><td>2.5425</td><td>-0.6227</td><td>-0.6152</td><td>0.747</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT242709270</td><td>2025-07-24</td><td>3.6603</td><td>-0.5249</td><td>-0.5301</td><td>-0.516</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT312562457</td><td>2026-05-28</td><td>4.5041</td><td>-0.4503</td><td>-0.4682</td><td>-1.781</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT36526153</td><td>2027-06-27</td><td>5.5863</td><td>-0.3930</td><td>-0.3957</td><td>-0.269</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT32154850</td><td>2028-04-08</td><td>6.3699</td><td>-0.3436</td><td>-0.3434</td><td>0.022</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT368102103</td><td>2029-06-22</td><td>7.5753</td><td>-0.2588</td><td>-0.2423</td><td>1.650</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT301543567</td><td>2030-05-27</td><td>8.5041</td><td>-0.2032</td><td>-0.1905</td><td>1.271</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT1757558256</td><td>2030-05-27</td><td>8.5041</td><td>-0.2004</td><td>-0.1905</td><td>0.988</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT134303960</td><td>2031-06-22</td><td>9.5753</td><td>-0.1540</td><td>-0.1528</td><td>0.122</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT570115477</td><td>2032-06-27</td><td>10.5918</td><td>-0.1070</td><td>-0.1008</td><td>0.625</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT31830796</td><td>2033-04-08</td><td>11.3726</td><td>-0.0858</td><td>-0.1060</td><td>-2.022</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT717813216</td><td>2035-06-23</td><td>13.5808</td><td>-0.0460</td><td>-0.0435</td><td>0.251</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT1757558257</td><td>2035-06-23</td><td>13.5808</td><td>-0.0537</td><td>-0.0435</td><td>1.020</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT31833085</td><td>2036-03-08</td><td>14.2904</td><td>-0.0255</td><td>-0.0583</td><td>-3.279</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT209137496</td><td>2037-06-27</td><td>15.5945</td><td>-0.0283</td><td>-0.0422</td><td>-1.395</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT628924731</td><td>2039-07-24</td><td>17.6685</td><td>-0.0586</td><td>-0.0308</td><td>2.773</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT204635012</td><td>2042-04-30</td><td>20.4384</td><td>-0.0456</td><td>-0.0486</td><td>-0.301</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT529523873</td><td>2045-06-28</td><td>23.6027</td><td>-0.0589</td><td>-0.0561</td><td>0.283</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT31835353</td><td>2049-01-06</td><td>27.1315</td><td>-0.0609</td><td>-0.0770</td><td>-1.611</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT430070050</td><td>2055-05-24</td><td>33.5123</td><td>-0.1230</td><td>-0.1052</td><td>1.780</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT337416277</td><td>2058-05-30</td><td>36.5315</td><td>-0.1338</td><td>-0.1193</td><td>1.452</td></tr>
+<tr><td class="l">spline</td><td class="l">IQT266829363</td><td>2064-06-25</td><td>42.6082</td><td>-0.1134</td><td>-0.1353</td><td>-2.192</td></tr>
+</tbody>
+</table></div>
+</main>
+</body>
+</html>

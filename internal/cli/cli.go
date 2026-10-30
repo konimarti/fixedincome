@@ -50,7 +50,13 @@ type env struct {
 	stdout, stderr io.Writer
 	// name is the command name, e.g. "bond price"
 	name string
+	// args are the positional arguments of the command
+	args []string
 }
+
+// positionalArgs is the maximum number of positional arguments of the
+// commands that take some.
+var positionalArgs = map[string]int{"curve compare": 2}
 
 // warnf prints a warning to stderr.
 func (e *env) warnf(format string, args ...any) {
@@ -84,6 +90,7 @@ func commands() []command {
 	return []command{
 		{"curve fit", "fit a Nelson-Siegel-Svensson or spline curve to bond prices", buildCurveFit},
 		{"curve fetch", "fetch the NSS curve parameters of the SNB or the ECB", buildCurveFetch},
+		{"curve compare", "compare two curve files: zero rates and forwards (A.json B.json)", buildCurveCompare},
 		{"curve show", "zero rates, discount factors and forwards of a curve", buildCurveShow},
 		{"curve forward", "forward rates of a given tenor along a curve", buildCurveForward},
 		{"curve template", "print a template curve file", buildCurveTemplate},
@@ -132,15 +139,23 @@ func RunIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	e.name = cmd.name
 	fs, exec := cmd.build(e)
 	fs.SetOutput(io.Discard)
-	if err := fs.Parse(rest); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			printCommandHelp(stdout, cmd, fs)
-			return ExitOK
+	// positional arguments may be mixed with the flags
+	for {
+		if err := fs.Parse(rest); err != nil {
+			if errors.Is(err, flag.ErrHelp) {
+				printCommandHelp(stdout, cmd, fs)
+				return ExitOK
+			}
+			return fail(e, usagef("%v", err))
 		}
-		return fail(e, usagef("%v", err))
-	}
-	if fs.NArg() > 0 {
-		return fail(e, usagef("unexpected argument %q", fs.Arg(0)))
+		if fs.NArg() == 0 {
+			break
+		}
+		if len(e.args) >= positionalArgs[cmd.name] {
+			return fail(e, usagef("unexpected argument %q", fs.Arg(0)))
+		}
+		e.args = append(e.args, fs.Arg(0))
+		rest = fs.Args()[1:]
 	}
 	return fail(e, exec())
 }

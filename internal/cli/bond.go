@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -158,6 +160,7 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 	price := fs.Float64("price", math.NaN(), "quoted clean price in percent of face (yields and z-spread are implied from it)")
 	yield := fs.Float64("yield", math.NaN(), "continuously compounded yield in percent (the price is computed from it)")
 	in := fs.String("in", "", "batch mode: CSV file with the bonds (- for stdin); columns maturity,coupon_pct,price_clean[,id,freq,daycount,face,redemption,issuer]")
+	groupBy := fs.String("group-by", "", "with --in: one row per group of the column issuer|freq|daycount instead of one per bond (n, duration-weighted z-spread, mean duration, DV01 sum)")
 	return fs, func() error {
 		set := setFlags(fs)
 		if *in != "" {
@@ -165,6 +168,15 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 				if set[n] {
 					return usagef("--%s cannot be combined with --in (put it into the CSV file)", n)
 				}
+			}
+		}
+		if set["group-by"] {
+			if *in == "" {
+				return usagef("--group-by needs --in FILE")
+			}
+			*groupBy = strings.ToLower(strings.TrimSpace(*groupBy))
+			if !groupColumns[*groupBy] {
+				return usagef("invalid --group-by %q (issuer, freq, daycount)", *groupBy)
 			}
 		}
 		if set["price"] && set["yield"] {
@@ -202,7 +214,7 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 		}
 		d := bondDefaults{freq: fr, dc: dc, face: *face, redemption: red}
 		if *in != "" {
-			return bondBatch(e, &cf, &ff, fmtOut, *in, d)
+			return bondBatch(e, &cf, &ff, fmtOut, *in, *groupBy, d)
 		}
 		// single bond
 		if set["price"] && !(*price > 0) {
@@ -273,10 +285,77 @@ func bondTableCols(withIssuer bool) []string {
 		"spread_total_bp", "mod_duration", "convexity", "dv01", "status")
 }
 
+// groupColumns are the columns of the batch output that --group-by accepts.
+var groupColumns = map[string]bool{"issuer": true, "freq": true, "daycount": true}
+
+// groupStats aggregates the bonds with a market price per group: the
+// z-spread is the duration-weighted average (sum(z*d) / sum(d)), the
+// duration the mean.
+type groupStats struct {
+	rows  int
+	order []string
+	g     map[string]*group
+}
+
+type group struct {
+	n           int
+	zd, d, dv01 float64
+}
+
+func (s *groupStats) add(key string, zspreadBP, duration, dv01 float64) {
+	if s.g == nil {
+		s.g = map[string]*group{}
+	}
+	key = strings.TrimSpace(key)
+	if key == "" {
+		key = "unknown"
+	}
+	x := s.g[key]
+	if x == nil {
+		x = &group{}
+		s.g[key] = x
+		s.order = append(s.order, key)
+	}
+	s.rows++
+	x.n++
+	x.zd += zspreadBP * duration
+	x.d += duration
+	x.dv01 += dv01
+}
+
+// table returns one row per group sorted by the average z-spread (then by
+// name); name is the title of the first column.
+func (s *groupStats) table(name string) *table {
+	t := &table{cols: []string{name, "n", "avg_zspread_bp", "avg_mod_duration", "dv01_sum"}}
+	avg := func(x *group) float64 {
+		if x.d > 0 {
+			return x.zd / x.d
+		}
+		return 0
+	}
+	keys := append([]string(nil), s.order...)
+	sort.SliceStable(keys, func(i, j int) bool {
+		ai, aj := avg(s.g[keys[i]]), avg(s.g[keys[j]])
+		if ai != aj {
+			return ai < aj
+		}
+		return keys[i] < keys[j]
+	})
+	for _, k := range keys {
+		x := s.g[k]
+		var key any = k
+		if f, err := strconv.Atoi(k); err == nil && name == "freq" {
+			key = f
+		}
+		t.add(key, x.n, avg(x), x.d/float64(x.n), x.dv01)
+	}
+	return t
+}
+
 // bondBatch values the bonds of a CSV file. Failing rows get an error text
 // in the status column instead of aborting; the exit code is 1 only if all
 // rows failed.
-func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path string, d bondDefaults) error {
+func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, groupBy string, d bondDefaults) error {
 	r, closeIn, err := openInput(e, path)
 	if err != nil {
 		return err
@@ -285,6 +364,9 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path stri
 	closeIn()
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
+	}
+	if groupBy == "issuer" && !bf.hasIssuer {
+		return fmt.Errorf("%s: --group-by issuer needs an issuer column in the input", path)
 	}
 	l, err := cf.load(e)
 	if err != nil {
@@ -297,6 +379,7 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path stri
 	t := &table{cols: bondTableCols(bf.hasIssuer)}
 	var failedIDs []string
 	failed := 0
+	groups := &groupStats{}
 	for _, b := range bf.rows {
 		var v bondValue
 		fr, dc, face, red := d.freq, d.dc, d.face, d.redemption
@@ -350,6 +433,24 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path stri
 		row = append(row, formatDate(b.maturity), toPct(b.coupon), int(fr), dc.String(), v.ttm, v.accrued, source,
 			v.clean, v.dirty, v.cleanModel, ycv, yav, zs, st, v.duration, v.convexity, v.dv01, "ok")
 		t.add(row...)
+		if v.market {
+			key := ""
+			switch groupBy {
+			case "issuer":
+				key = b.issuer
+			case "freq":
+				key = strconv.Itoa(int(fr))
+			case "daycount":
+				key = dc.String()
+			}
+			groups.add(key, toBP(v.zspread), v.duration, v.dv01)
+		}
+	}
+	if groupBy != "" {
+		t = groups.table(groupBy)
+		if skipped := len(bf.rows) - groups.rows; skipped > 0 {
+			e.warnf("%d of %d rows not in the groups (status not ok or no market price)", skipped, len(bf.rows))
+		}
 	}
 	if err := out.finish(writeTable(out.w, t, fmtOut)); err != nil {
 		return err

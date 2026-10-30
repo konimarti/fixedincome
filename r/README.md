@@ -1,5 +1,8 @@
 # R plots
 
+Optional: `fic curve fit --report fit.html` already writes a self-contained HTML report with the fit plots and
+`fic curve compare` compares curves, so these scripts are only needed for custom plots (PNG).
+
 Base graphics only; the PNG is always written explicitly. Columns are read by
 name from the CSV files of `fic` and the scripts stop with a message if a
 column is missing.

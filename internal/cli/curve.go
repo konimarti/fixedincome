@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/konimarti/fixedincome/internal/report"
 	"github.com/konimarti/fixedincome/pkg/fit"
 	"github.com/konimarti/fixedincome/pkg/rate"
 	"github.com/konimarti/fixedincome/pkg/term"
@@ -175,6 +176,7 @@ func buildCurveFit(e *env) (*flag.FlagSet, func() error) {
 	lag := fs.Int("settle-lag", 0, "calendar days added to --date to obtain the settlement date")
 	out := fs.String("o", "-", "output curve JSON file (- for stdout)")
 	resid := fs.String("residuals", "", "write the per-bond residuals as CSV to this file")
+	reportFlag := fs.String("report", "", "write a self-contained HTML report (curves, residuals, parameters, warnings) to this file")
 	return fs, func() error {
 		set := setFlags(fs)
 		if *bonds == "" {
@@ -197,6 +199,14 @@ func buildCurveFit(e *env) (*flag.FlagSet, func() error) {
 		}
 		if *resid == "-" && (*out == "-" || *out == "") {
 			return usagef("--residuals - and the curve on stdout cannot be combined")
+		}
+		if *reportFlag == "-" && (*out == "-" || *out == "" || *resid == "-") {
+			return usagef("--report - and the curve or the residuals on stdout cannot be combined")
+		}
+		for _, o := range []string{*out, *resid} {
+			if *reportFlag != "" && o != "" && sameFile(*reportFlag, o) {
+				return usagef("--report and %s name the same file", o)
+			}
 		}
 		obj, err := fit.ParseObjective(*objective)
 		if err != nil {
@@ -276,6 +286,14 @@ func buildCurveFit(e *env) (*flag.FlagSet, func() error) {
 			outs = append(outs, rout)
 		}
 
+		var hout *output
+		if *reportFlag != "" {
+			if hout, err = openOutput(*reportFlag, e.stdout, *bonds, *start); err != nil {
+				return cleanup(err)
+			}
+			outs = append(outs, hout)
+		}
+
 		r, closeIn, err := openInput(e, *bonds)
 		if err != nil {
 			return cleanup(err)
@@ -285,7 +303,11 @@ func buildCurveFit(e *env) (*flag.FlagSet, func() error) {
 		if err != nil {
 			return cleanup(fmt.Errorf("%s: %w", *bonds, err))
 		}
-		warn := func(s string) { e.warnf("%s", s) }
+		var warnings []string
+		warn := func(s string) {
+			warnings = append(warnings, s)
+			e.warnf("%s", s)
+		}
 		bs := fitBondsFromRows(bf, warn)
 		if len(bs) == 0 {
 			return cleanup(errors.New("no valid bonds with a price"))
@@ -328,6 +350,21 @@ func buildCurveFit(e *env) (*flag.FlagSet, func() error) {
 				errs = append(errs, err.Error())
 				rout.Discard()
 			} else if err := rout.Close(); err != nil {
+				errs = append(errs, err.Error())
+			}
+		}
+		if hout != nil {
+			rep := fitReport(settle, source, len(bs), results, warnings)
+			var err error
+			if len(rep.Models) > 0 {
+				err = report.Write(hout.w, rep)
+			} else {
+				err = errors.New("report: no model was fitted")
+			}
+			if err != nil {
+				errs = append(errs, err.Error())
+				hout.Discard()
+			} else if err := hout.Close(); err != nil {
 				errs = append(errs, err.Error())
 			}
 		}

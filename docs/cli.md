@@ -4,7 +4,7 @@ Full reference of the command line tool. For a short introduction see the [READM
 
 
 ```
-fic curve fetch | fit | show | forward | template     fic bond price     fic swap rate     fic option price     fic sim zcb
+fic curve fetch | fit | compare | show | forward | template     fic bond price     fic swap rate     fic option price     fic sim zcb
 fic version        fic help [command]
 ```
 
@@ -20,7 +20,7 @@ Flags work with one or two dashes (`--curve` is documented). `fic help <command>
 | Spread | the `spread_bp` of the curve file is kept, `--spread BP` is **added** to it |
 | Formats | `--format text\|csv\|json`, `-o FILE` (default stdout). **Output files are atomic and non-destructive:** the data is written to a temporary file next to `-o` and renamed on success, an existing file is never damaged or deleted by a failing run, and `-o` equal to an input file (`--curve`, `--in`, `--bonds`, `--start`, `--fwd-curve`; compared with `os.SameFile`) is a usage error (exit 2). Default format for tables (`curve show/forward`, batch `bond price`, `swap rate`, `sim zcb`): text on a terminal, **csv** when stdout is not a terminal or `-o` is given (a terminal is a character device other than `/dev/null`; this is not a full `isatty` check); for single values (`bond price` of one bond, `option price`): **text** |
 | CSV / JSON | header always, snake_case names with unit suffix (`ttm_years`, `price_clean`, `yield_cc_pct`, `zspread_bp`, ...), comma separated, ISO dates, numbers `%.10g` (negative zero is printed as `0`); text fields that start with `=`, `+`, `-`, `@`, tab or CR get a leading apostrophe in CSV (spreadsheet formula guard; numbers are untouched); JSON is one object (single value) or an array of objects (tables) with the same names; non-finite numbers are empty (csv) or `null` |
-| Streams | stdout is data only; warnings, summaries and progress go to stderr; nothing is written to the working directory unless `-o` (or `--residuals`) is given |
+| Streams | stdout is data only; warnings, summaries and progress go to stderr; nothing is written to the working directory unless `-o` (or `--residuals`, `--report`) is given |
 | Exit codes | `0` ok, `1` runtime or numerical error (unreadable file, matured bond, no yield found, all batch rows failed), `2` usage error (unknown command or flag, invalid value, missing required flag). Errors are one line `fic <command>: message` |
 
 ## Commands and flags
@@ -28,11 +28,12 @@ Flags work with one or two dashes (`--curve` is documented). `fic help <command>
 | Command | Flags (units) |
 |---|---|
 | `fic curve fetch` | `--source snb\|ecb` (required), `--date D\|latest` (default latest = the latest date with all six parameters), `--file FILE\|-` (parse a downloaded file, no network), `--ecb-issuers aaa\|all` (default aaa), `--max-age DAYS` (default 14; warn if the latest parameters are older, 0 = never), `--strict` (with `latest`: exit 1 and write no output if the data is older than `--max-age`), `--timeout 30s`, `--spread BP` (written as `spread_bp`, at most 100000 in absolute value), `-o FILE` (curve JSON, default stdout). Downloads the published NSS parameters (SNB: CHF, source `SNB rendopar`; ECB: EUR, `ECB AAA` or `ECB all issuers`) and writes a curve file with `asof`, `currency` and `source`; after the output was written, stderr gets warnings and a summary with the 1y/5y/10y zero rates (tagged `[STALE: N days]` when the data is older than `--max-age`). `--ecb-issuers` given explicitly must match the variant of a `--file`; files that mix several instruments, currencies or areas are rejected. Exit 1 for network or data errors (also a `--date` without a complete parameter set: the error names the nearest earlier date) |
-| `fic curve fit` | `--bonds FILE\|-` (bond CSV), `--date D` (`YYYY-MM-DD` or `DD.MM.YYYY`, default today), `--model nss\|spline\|both` (default nss; `both` needs `-o` and writes `<stem>.nss.json`, `<stem>.spline.json`), `--onrate PCT` (overnight rate, simple ACT/360; constrains the short end), `--start CURVE` (NSS starting point), `--min-ttm Y` (default 0.1; <= 0 keeps all), `--lambda X\|gcv`, `--objective yield\|price`, `--huber BP`, `--settle-lag DAYS`, `-o FILE` (curve JSON, default stdout), `--residuals FILE` (per-bond CSV). The `asof` of the curve is the settlement date; `source` the bond file. Warnings of the fit go to stderr |
+| `fic curve fit` | `--bonds FILE\|-` (bond CSV), `--date D` (`YYYY-MM-DD` or `DD.MM.YYYY`, default today), `--model nss\|spline\|both` (default nss; `both` needs `-o` and writes `<stem>.nss.json`, `<stem>.spline.json`), `--onrate PCT` (overnight rate, simple ACT/360; constrains the short end), `--start CURVE` (NSS starting point), `--min-ttm Y` (default 0.1; <= 0 keeps all), `--lambda X\|gcv`, `--objective yield\|price`, `--huber BP`, `--settle-lag DAYS`, `-o FILE` (curve JSON, default stdout), `--residuals FILE` (per-bond CSV), `--report FILE` (HTML report, see below). The `asof` of the curve is the settlement date; `source` the bond file. Warnings of the fit go to stderr |
+| `fic curve compare` | `A.json B.json` (two curve files, flags may come before, between or after them), `--grid start:end:step` (default `1m:10y:1m`) or `--t 1y,2y,5y`, `--format`, `-o` (not equal to A or B). The curves are used as stored (including their `spread_bp`), there is no `--spread`. Columns `t_years, a_zero_cc_pct, b_zero_cc_pct, diff_zero_bp, a_fwd_cc_pct, b_fwd_cc_pct, diff_fwd_bp`: the instantaneous forward rate `fwd_cc`, differences are **B minus A** in bp. stderr gets a warning if the `asof` dates differ and a summary of `diff_zero_bp` (mean, maximum absolute value with its maturity, RMS) |
 | `fic curve show` | `--curve`, `--grid start:end:step` (default `1m:10y:1m`) or `--t 1y,2y,5y`, `--spread BP`, `--format`, `-o`. Columns `t_years, zero_cc_pct, zero_annual_pct, discount_factor, inst_fwd_cc_pct` |
 | `fic curve forward` | as `show` plus `--tenor 1y`. Columns `t_years, tenor_years, zero_cc_pct, discount_factor, fwd_cc_pct, fwd_annual_pct, fwd_discount_factor` |
 | `fic curve template` | `--model nss\|spline\|flat`, `-o`: a valid curve file |
-| `fic bond price` | `--curve`, `--date`, `--spread BP`, `--maturity D\|5y`, `--coupon PCT`, `--freq 1\|2\|3\|4\|6\|12` (default 1), `--daycount 30E360\|EUROBOND\|BONDBASIS\|ACT360\|ACTACT`, `--face 100`, `--redemption` (default: the face value), one of `--price CLEAN` (percent of face) or `--yield PCT` (cc), or `--in FILE\|-` for a bond CSV (batch) |
+| `fic bond price` | `--curve`, `--date`, `--spread BP`, `--maturity D\|5y`, `--coupon PCT`, `--freq 1\|2\|3\|4\|6\|12` (default 1), `--daycount 30E360\|EUROBOND\|BONDBASIS\|ACT360\|ACTACT`, `--face 100`, `--redemption` (default: the face value), one of `--price CLEAN` (percent of face) or `--yield PCT` (cc), or `--in FILE\|-` for a bond CSV (batch), with `--in`: `--group-by issuer\|freq\|daycount` (one row per group, see below) |
 | `fic swap rate` | `--curve`, `--fwd-curve FILE` (forecast curve of the floating leg, default the same curve), `--tenors 2y,3y,...,10y`, `--freq 2`, `--spread BP` (on the discount curve). Swaps start at the curve date, so par rates do not depend on a valuation date and `swap rate` has no `--date` flag. Columns `tenor, tenor_years, freq, par_rate_pct, annuity` |
 | `fic option price` | `--type call\|put`, `--spot S`, `--strike K`, `--expiry 2y\|2.5\|DATE` (a date `YYYY-MM-DD` / `DD.MM.YYYY` is relative to `--date`), `--vol PCT` or `--implied-from PRICE`, `--rate PCT` or `--curve FILE` (zero rate at the expiry), `--div PCT`, `--date`. Columns `type, spot, strike, expiry_years, vol_pct, rate_cc_pct, div_pct, price, delta, gamma, vega_per_volpt, theta_per_day, rho_per_pct, phi_per_pct` |
 | `fic sim zcb` | `--model holee\|hullwhite\|vasicek`, `--curve`, `--sigma PCT` (short rate vol per sqrt(year), 1 = 100bp), `--mean-reversion A` (hullwhite), `--spread BP` (added to the curve file spread), `--horizon 10y`, `--steps 120`, `--paths 10000`, `--seed N` (default 1, 0 = time based), `--antithetic`. Columns `t_years, curve_zero_cc_pct, curve_fwd_cc_pct, curve_discount, model_discount, mc_discount, mc_stderr, mc_zero_cc_pct, z_score` |
@@ -91,6 +92,25 @@ spread_total_bp, mod_duration, convexity, dv01, status`.
   abort the run. The exit code is 1 only if **all** rows failed; one line on stderr gives the number of failed rows and
   the ids of the first ones.
 
+**`fic bond price --in FILE --group-by COLUMN`, groups.** Instead of one row per bond the output has one row per
+value of `COLUMN` (`issuer`, `freq` or `daycount`; anything else is a usage error, exit 2; `issuer` needs an
+`issuer` column in the file, else exit 1; an empty issuer is the group `unknown`). Only rows with `status` `ok` and a
+market price (`price_source` = `market`) are used; the number of the other rows is reported on stderr. Columns
+`<COLUMN>, n, avg_zspread_bp, avg_mod_duration, dv01_sum`, sorted by `avg_zspread_bp`:
+
+- `avg_zspread_bp` = sum(`zspread_bp` x `mod_duration`) / sum(`mod_duration`) (duration-weighted),
+- `avg_mod_duration` = sum(`mod_duration`) / `n`, `dv01_sum` = sum of the `dv01` of the group.
+
+There is no total row.
+
+**`fic curve fit --report FILE`, HTML report.** One self-contained file (inline CSS and SVG, no scripts, no external
+assets; text is escaped; light and dark colour scheme; no timestamp, so the same fit gives the same bytes). It shows
+the as-of date, the number of bonds, the RMSE and the fit warnings, the fitted zero curve(s) (`--model both`: both)
+with the market yields of the bonds, the yield errors in bp against the time to maturity, the parameters and the
+residuals (the numbers of `--residuals`, rounded). `--report -` writes the HTML to stdout (then the curve needs
+`-o FILE`); like `-o` the file is written atomically and must not be an input file or another output. Sample of
+`data/bonds_2021-11-26.csv`: [fit_report_sample.html](fit_report_sample.html).
+
 ## Data schemas
 
 Curve file (JSON; percent and bp; `model` is `nss`, `spline` with `knots` and `discount_factors`, or `flat`
@@ -125,8 +145,11 @@ fic curve fit --bonds data/bonds_2021-11-26.csv --date 2021-11-26 --onrate -0.75
    -o fit.json --residuals residuals.csv
 # 4. price the bonds on the SNB curve: yield, z-spread, duration per bond (rows without a price are valued on the curve)
 fic bond price --curve curve.json --in bonds.csv --format csv > priced.csv
-scripts/avg-spread.zsh -c curve.json bonds.csv        # duration-weighted z-spread per issuer
-# 5. plots (base graphics, PNG)
+fic bond price --curve curve.json --in bonds.csv --group-by issuer   # duration-weighted z-spread per issuer
+# 5. a report of the fit and a comparison of the two models
+fic curve fit --bonds data/bonds_2021-11-26.csv --date 2021-11-26 --onrate -0.75 --model both -o fit.json --report fit.html
+fic curve compare fit.nss.json fit.spline.json --grid 1m:30y:1m -o compare.csv
+# 6. optional: custom plots in R (base graphics, PNG)
 fic curve show --curve fit.nss.json --grid 1m:30y:1m -o curve.csv
 Rscript r/curve.R residuals.csv curve.png curve.csv
 ```
@@ -137,16 +160,16 @@ binary (`FIC=./fic zsh scripts/test.zsh`).
 ## Regenerating the committed samples
 
 `data/` holds the curve and bonds. `data/fit_residuals_2021-11-26.csv` and `data/fit_2021-11-26.png` are the output of
-exactly (the `--onrate -0.75` matters):
+exactly (the `--onrate -0.75` matters; `docs/fit_report_sample.html` is the `--report` of the same command):
 
 ```sh
 fic curve fit --bonds data/bonds_2021-11-26.csv --date 2021-11-26 --onrate -0.75 --model both \
-   -o fit.json --residuals data/fit_residuals_2021-11-26.csv
+   -o fit.json --residuals data/fit_residuals_2021-11-26.csv --report docs/fit_report_sample.html
 Rscript r/curve.R data/fit_residuals_2021-11-26.csv data/fit_2021-11-26.png
 ```
 
 (`fit.nss.json` and `fit.spline.json` are by-products and are ignored by git.) A test
-(`TestRegenerateSample` in `internal/cli`) regenerates the residuals in-process and compares it byte for byte.
+(`TestRegenerateSample` in `internal/cli`) regenerates the residuals and the report in-process and compares them byte for byte.
 
 
 ## Nelson-Siegel-Svensson parameters

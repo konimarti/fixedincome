@@ -42,7 +42,7 @@ insensitive, any order, unknown columns ignored):
 | `freq` | coupons per year (1, 2, 3, 4, 6, 12), default `--freq` | no |
 | `daycount` | `30E360`, `EUROBOND`, `BONDBASIS`, `ACT360`, `ACTACT`, default `--daycount` | no |
 | `face`, `redemption` | face value (default 100) and redemption (default face) | no |
-| `issuer` | echoed to the output (grouping in `scripts/avg-spread.zsh`) | no |
+| `issuer` | echoed to the output; `fic bond price --in --group-by issuer` aggregates per issuer | no |
 
 Without a header the columns are `maturity,coupon,price,id`. CRLF line endings,
 a byte order mark, quoted fields and blank lines are accepted.

@@ -1,5 +1,28 @@
 # Changelog
 
+## Analysis in fic
+
+Three analysis features move into the `fic` binary.
+
+- **`fic curve fit --report FILE`**: a self-contained HTML report of the fit (inline CSS and SVG, no scripts or
+  external assets, escaped text, light and dark scheme, deterministic output): as-of date, bonds, RMSE, fit warnings,
+  fitted zero curve(s) with the market yields (`--model both`: both models), yield errors in bp per bond, parameter
+  and residual tables. Atomic output, same-file refusal as for the other outputs. Sample:
+  `docs/fit_report_sample.html`. New package `internal/report`.
+- **`fic bond price --in FILE --group-by issuer|freq|daycount`**: one row per group with `n`, the duration-weighted
+  `avg_zspread_bp`, `avg_mod_duration` and `dv01_sum`, sorted by spread; only rows with status `ok` and a market
+  price count, the others are reported on stderr. Formats `text`, `csv`, `json`.
+- **`fic curve compare A.json B.json`**: zero rates and instantaneous forwards of two curves on a grid or a list of
+  maturities (`--grid`, `--t` as in `curve show`), with the differences (B minus A) in bp; stderr gets a warning if the
+  `asof` dates differ and the mean, maximum and RMS of the zero-rate difference. Commands can now take positional
+  arguments (mixed with flags).
+- **Removed: `scripts/avg-spread.zsh` and `scripts/lib/avg-spread.awk`** (and their cases in `scripts/test.zsh`).
+  Migration: `avg-spread.zsh -c curve.json -d DATE bonds.csv` is
+  `fic bond price --curve curve.json --date DATE --in bonds.csv --group-by issuer --format csv`. Differences: without
+  an `issuer` column the new command fails (exit 1) instead of printing one group `all`; the output has the extra
+  column `dv01_sum`; the skipped-rows message is a `fic bond price` warning. `scripts/lib/csv.awk` stays (used by
+  `six-bonds.zsh`). The R scripts in `r/` are now optional, for custom plots.
+
 ## Removed (cleanup)
 
 The deprecated code of WP5 is gone. Nothing else changed; `fic` and the library behave as before.
@@ -169,7 +192,7 @@ There is no `--legacy-output` switch.
   (decimal CSV) keep their legacy files.
 - Scripts: `snb.zsh` writes the new curve schema (header-aware, latest
   complete date), `six-bonds.zsh` writes the bond CSV (missing price = empty
-  field), `price-bonds.zsh` and `avg-spread.zsh` are thin wrappers of
+  field), `price-bonds.zsh` and `avg-spread.zsh` (removed again, see "Analysis in fic") are thin wrappers of
   `fic bond price` (duration-weighted average z-spread per issuer by column
   name, rows with `status != ok` skipped); `scripts/test.zsh` tests them with
   fixtures.

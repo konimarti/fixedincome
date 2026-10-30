@@ -48,6 +48,15 @@ fic curve fit --bonds bonds.csv --date 2021-11-26 --model nss -o fit.json --resi
 
 The bond file is `maturity,coupon_pct,price_clean[,id,freq,daycount,face]`; see [`data/`](data/README.md) for a sample.
 
+Add `--report fit.html` for a self-contained HTML report (fitted curve with the bond yields, yield errors per bond,
+parameters, residuals and fit warnings; [sample](docs/fit_report_sample.html)).
+
+**Compare two curves** (e.g. yesterday and today, or NSS and spline)
+
+```sh
+fic curve compare yesterday.json today.json --grid 1m:10y:1m    # zero and forward rates, difference in bp
+```
+
 **Price a bond: yield, z-spread and risk from a quote**
 
 ```sh
@@ -63,6 +72,7 @@ zspread_bp:   0.029061277      dv01:         -0.05516782
 
 ```sh
 fic bond price --curve curve.json --in bonds.csv --format csv > priced.csv
+fic bond price --curve curve.json --in bonds.csv --group-by issuer   # duration-weighted z-spread per issuer
 ```
 
 **Par swap rates, option prices and short-rate simulation**
@@ -117,7 +127,7 @@ More involved securities (range floater, leveraged inverse floater) are in [`exa
 ## More
 
 - [`docs/cli.md`](docs/cli.md): complete `fic` reference (flags, output columns, schemas, pipeline example, data sources)
-- [`r/`](r/README.md): R scripts for plotting fitted curves and simulations
+- [`r/`](r/README.md): optional R scripts for custom plots of fitted curves and simulations
 - [`CHANGELOG.md`](CHANGELOG.md): changes and migration tables from the previous tools
 
 Central bank parameters: [SNB](https://data.snb.ch/en/topics/ziredev#!/cube/rendopar) (the cube currently ends on

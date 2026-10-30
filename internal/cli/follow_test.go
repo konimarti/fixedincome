@@ -254,9 +254,12 @@ func TestRegenerateSample(t *testing.T) {
 	dir := t.TempDir()
 	res := filepath.Join(dir, "result.csv")
 	code, _, errOut := run(t, "curve", "fit", "--bonds", bondsFile, "--date", "2021-11-26", "--onrate", "-0.75", "--model", "both",
-		"-o", filepath.Join(dir, "fit.json"), "--residuals", res)
+		"-o", filepath.Join(dir, "fit.json"), "--residuals", res, "--report", filepath.Join(dir, "report.html"))
 	if code != 0 {
 		t.Fatalf("%d %s", code, errOut)
+	}
+	if got, want := mustRead(t, filepath.Join(dir, "report.html")), mustRead(t, "../../docs/fit_report_sample.html"); !bytes.Equal(got, want) {
+		t.Errorf("docs/fit_report_sample.html is not reproduced by the documented command (%d vs %d bytes)", len(got), len(want))
 	}
 	want := mustRead(t, "../../data/fit_residuals_2021-11-26.csv")
 	if got := mustRead(t, res); !bytes.Equal(got, want) {
