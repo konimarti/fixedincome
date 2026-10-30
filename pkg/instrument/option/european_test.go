@@ -10,14 +10,14 @@ import (
 
 var (
 	testOption = option.European{
-		option.Call,
-		110.0,
-		100.0,
-		2.0,
-		0.0,
-		0.3,
+		Type: option.Call,
+		S:    110.0,
+		K:    100.0,
+		T:    2.0,
+		Q:    0.0,
+		Vola: 0.3,
 	}
-	ts = term.Flat{2.0, 0.0}
+	ts = term.Flat{R: 2.0, Spread: 0.0}
 )
 
 func TestN(t *testing.T) {

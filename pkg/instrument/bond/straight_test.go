@@ -26,13 +26,13 @@ func TestStraight_PresentValue(t *testing.T) {
 
 	// term structure (parameters per 2021-04-01 for CH govt bonds)
 	term := term.NelsonSiegelSvensson{
-		-0.266372,
-		-0.471343,
-		5.68789,
-		-5.12324,
-		5.74881,
-		4.14426,
-		0.0, // spread
+		B0:     -0.266372,
+		B1:     -0.471343,
+		B2:     5.68789,
+		B3:     -5.12324,
+		T1:     5.74881,
+		T2:     4.14426,
+		Spread: 0.0,
 	}
 
 	dirty := bond.PresentValue(&term)
@@ -112,13 +112,13 @@ func TestStraight_DurationConvexity(t *testing.T) {
 	}
 
 	term := term.NelsonSiegelSvensson{
-		-0.266372,
-		-0.471343,
-		5.68789,
-		-5.12324,
-		5.74881,
-		4.14426,
-		0.0, // spread
+		B0:     -0.266372,
+		B1:     -0.471343,
+		B2:     5.68789,
+		B3:     -5.12324,
+		T1:     5.74881,
+		T2:     4.14426,
+		Spread: 0.0,
 	}
 
 	for nr, test := range testData {

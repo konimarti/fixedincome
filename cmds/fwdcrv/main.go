@@ -22,16 +22,19 @@ func main() {
 	// read input files
 	flag.Parse()
 
-	// read smetarting term structure
+	// read term structure
 	termData, err := ioutil.ReadFile(*fileFlag)
 	if err != nil {
-		log.Println(err)
+		fmt.Fprintln(os.Stderr, "error: reading term structure failed:", err)
+		os.Exit(1)
 	}
 
 	ts, err := term.Parse(termData)
 	if err != nil {
-		log.Println(err)
+		fmt.Fprintf(os.Stderr, "error: parsing term structure from %s failed: %v\n", *fileFlag, err)
+		os.Exit(1)
 	}
+	fmt.Fprintln(os.Stderr, "Term model read from", *fileFlag)
 
 	// term maturity
 	m := *maturity
@@ -58,7 +61,7 @@ func main() {
 	}
 
 	output := [][]string{
-		[]string{"x", "SpotRate", "FwdRate", "Z", "F"},
+		{"x", "SpotRate", "FwdRate", "Z", "F"},
 	}
 
 	for i := 1; i <= 10*12; i++ {

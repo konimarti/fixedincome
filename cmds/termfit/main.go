@@ -11,6 +11,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/konimarti/fixedincome"
@@ -23,15 +24,19 @@ import (
 
 const DateFmt = "2006-01-02"
 
+// dateFormats are the accepted formats for the maturity dates in the CSV file
+var dateFormats = []string{DateFmt, "02.01.2006"}
+
 var (
 	bonds  []bond.Straight
+	quotes []float64 // quoted "clean" prices
 	prices []float64 // "dirty" prices
-	yields []float64 // "dirty" prices
+	yields []float64 // yields of the "dirty" prices
 )
 
 var (
-	file       = flag.String("file", "bonddata.csv", fmt.Sprintf("CSV file for bond data with the following fields: maturity date (format: %s), coupon, price", DateFmt))
-	settlement = flag.String("date", time.Now().Format(DateFmt), fmt.Sprintf("date of the bond prices (format: %s)", DateFmt))
+	file       = flag.String("file", "bonddata.csv", fmt.Sprintf("CSV file for bond data with the following fields: maturity date (format: %s or DD.MM.YYYY), coupon, price; an optional header row is skipped", DateFmt))
+	settlement = flag.String("date", time.Now().Format(DateFmt), fmt.Sprintf("date of the bond prices (format: %s or DD.MM.YYYY)", DateFmt))
 	onRate     = flag.Float64("onrate", 0.0, "Overnight rate (e.g. Swiss Average Rate Overnight) in % (deactivate it by setting it to 0.0)")
 	fileFlag   = flag.String("f", "term.json", "json file containing the parameters for term structure")
 )
@@ -53,7 +58,11 @@ func main() {
 		log.Fatal("Unable to parse file as CSV for "+filePath, err)
 	}
 
-	lastTradingDay, err := time.Parse(DateFmt, *settlement)
+	lastTradingDay, err := parseDate(*settlement)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid -date: %v\n", err)
+		os.Exit(1)
+	}
 
 	// read starting term structure
 	termData, err := ioutil.ReadFile(*fileFlag)
@@ -63,7 +72,7 @@ func main() {
 
 	ts, err := term.Parse(termData)
 	if err != nil {
-		log.Println(err)
+		log.Printf("no valid starting term structure in %s (%v), using default parameters", *fileFlag, err)
 	}
 
 	// convert annual O/N rate to a continuously compounded rate
@@ -92,19 +101,31 @@ func main() {
 		fmt.Println("")
 	}
 
+	// skip header row
+	if len(records) > 0 && isHeader(records[0]) {
+		records = records[1:]
+	}
+
 	// read in the bonds
-	for _, line := range records[0:] {
-		maturityDay, err := time.Parse(DateFmt, line[0])
+	for nr, line := range records {
+		if len(line) < 3 {
+			log.Fatalf("%s: row %d: expected at least 3 fields (maturity, coupon, price), got %d", filePath, nr+1, len(line))
+		}
+		maturityDay, err := parseDate(line[0])
 		if err != nil {
-			panic(err)
+			log.Fatalf("%s: row %d: %v", filePath, nr+1, err)
 		}
 		coupon, err := strconv.ParseFloat(line[1], 64)
 		if err != nil {
-			panic(err)
+			log.Fatalf("%s: row %d: invalid coupon: %v", filePath, nr+1, err)
 		}
 		price, err := strconv.ParseFloat(line[2], 64)
 		if err != nil {
-			panic(err)
+			log.Fatalf("%s: row %d: invalid price: %v", filePath, nr+1, err)
+		}
+		if !lastTradingDay.Before(maturityDay) {
+			log.Printf("%s: row %d: bond matured on %s, skipped", filePath, nr+1, maturityDay.Format(DateFmt))
+			continue
 		}
 
 		bnd := bond.Straight{
@@ -118,6 +139,7 @@ func main() {
 			Redemption: 100.0,
 		}
 		bonds = append(bonds, bnd)
+		quotes = append(quotes, price)
 		// reminder: prices are "dirty"
 		dirty := price + bnd.Accrued()
 		prices = append(prices, dirty)
@@ -130,14 +152,21 @@ func main() {
 
 	}
 
+	// the term structure cannot be fitted with less bonds than parameters
+	if len(bonds) < minBonds {
+		fmt.Fprintf(os.Stderr, "too few bonds to fit the term structure: got %d (not matured at %s), need at least %d\n",
+			len(bonds), lastTradingDay.Format(DateFmt), minBonds)
+		os.Exit(1)
+	}
+
 	// *******************************************************************
 	// optimized NSS
 	// *******************************************************************
 	fun := func(xf []float64) float64 {
 
 		ts := &term.NelsonSiegelSvensson{
-			xf[0], xf[1], xf[2], xf[3], xf[4], xf[5],
-			0.0,
+			B0: xf[0], B1: xf[1], B2: xf[2], B3: xf[3], T1: xf[4], T2: xf[5],
+			Spread: 0.0,
 		}
 
 		penalty := 1.0e3
@@ -173,8 +202,8 @@ func main() {
 	}
 
 	termStart := term.NelsonSiegelSvensson{
-		x[0], x[1], x[2], x[3], x[4], x[5],
-		0.0,
+		B0: x[0], B1: x[1], B2: x[2], B3: x[3], T1: x[4], T2: x[5],
+		Spread: 0.0,
 	}
 
 	// solve optimization problem
@@ -197,13 +226,13 @@ func main() {
 
 	// store optmizated parameters
 	termNss := term.NelsonSiegelSvensson{
-		result.X[0],
-		result.X[1],
-		result.X[2],
-		result.X[3],
-		result.X[4],
-		result.X[5],
-		0.0,
+		B0:     result.X[0],
+		B1:     result.X[1],
+		B2:     result.X[2],
+		B3:     result.X[3],
+		T1:     result.X[4],
+		T2:     result.X[5],
+		Spread: 0.0,
 	}
 
 	fmt.Println("Nelson-Siegel-Svensson term structure:")
@@ -230,14 +259,17 @@ func main() {
 	}
 	sort.Float64s(temp)
 
-	xt := append([]float64{temp[0]}, determine_weights(temp, len(temp)/int(math.Sqrt(float64(len(bonds)))))...)
-	xt = append(xt, temp[len(temp)-1])
+	xt := splineKnots(temp, len(bonds))
 
 	// define optimization function for the (cubic) splines
 	funSpline := func(y []float64) float64 {
-		ts := term.NewSpline(xt, y, 0.0)
 		sst := 0.0
 		penalty := 1.0e3
+		ts, err := newSpline(xt, y)
+		if err != nil {
+			// invalid trial point (e.g. non-positive discount factors)
+			return penalty * float64(len(bonds)+1)
+		}
 		for i, bond := range bonds {
 			// minimize least-squares of yields
 			if math.IsNaN(yields[i]) {
@@ -279,7 +311,10 @@ func main() {
 	printResult(result)
 
 	// print out price comparison
-	termSpline := term.NewSpline(xt, result.X, 0.0)
+	termSpline, err := newSpline(xt, result.X)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println("Cubic spline term structure")
 	fmt.Println("Maturities      :", xt)
 	fmt.Println("Discount Factors:", result.X)
@@ -296,7 +331,7 @@ func main() {
 		t := bond.Last()
 		output = append(output, []string{
 			fmt.Sprintf("%v", t),
-			fmt.Sprintf("%v", prices[i]),
+			fmt.Sprintf("%v", quotes[i]),
 			fmt.Sprintf("%v", termStart.Rate(t)),
 			fmt.Sprintf("%v", termNss.Rate(t)),
 			fmt.Sprintf("%v", termSpline.Rate(t)),
@@ -317,6 +352,76 @@ func main() {
 	w := csv.NewWriter(fout)
 	w.WriteAll(output) // calls Flush internally
 
+}
+
+// minBonds is the minimum number of bonds for the fit (number of parameters
+// of the Nelson-Siegel-Svensson model)
+const minBonds = 6
+
+// isHeader returns true if the CSV row is a header row, i.e. if the
+// maturity is not a date and the coupon and price are not numeric
+func isHeader(row []string) bool {
+	if len(row) < 3 {
+		return false
+	}
+	if _, err := parseDate(row[0]); err == nil {
+		return false
+	}
+	for _, field := range row[1:3] {
+		if _, err := strconv.ParseFloat(strings.TrimSpace(field), 64); err == nil {
+			return false
+		}
+	}
+	return true
+}
+
+// splineKnots returns the maturities used as knots for the cubic spline,
+// given the sorted maturities of all cash flows (strictly increasing and
+// positive, without duplicates)
+func splineKnots(maturities []float64, nbonds int) []float64 {
+	if len(maturities) == 0 {
+		return nil
+	}
+	n := 0
+	if nbonds > 0 {
+		n = len(maturities) / int(math.Sqrt(float64(nbonds)))
+	}
+	xt := append([]float64{maturities[0]}, determine_weights(maturities, n)...)
+	xt = append(xt, maturities[len(maturities)-1])
+
+	// remove unset weights (zero) and duplicates
+	sort.Float64s(xt)
+	knots := []float64{}
+	for _, t := range xt {
+		if t > 0.0 && (len(knots) == 0 || t > knots[len(knots)-1]) {
+			knots = append(knots, t)
+		}
+	}
+	return knots
+}
+
+// newSpline returns a cubic spline term structure without spread; in
+// contrast to term.NewSpline, it returns an error for invalid input
+func newSpline(maturities, factors []float64) (term.Structure, error) {
+	spline := term.Spline{
+		Maturities:      append([]float64{}, maturities...),
+		DiscountFactors: append([]float64{}, factors...),
+	}
+	if err := spline.Init(); err != nil {
+		return nil, err
+	}
+	return &spline, nil
+}
+
+// parseDate parses a date in one of the accepted date formats
+func parseDate(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	for _, layout := range dateFormats {
+		if d, err := time.Parse(layout, value); err == nil {
+			return d, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("invalid date %q (formats: %s)", value, strings.Join(dateFormats, ", "))
 }
 
 func printResult(result *optimize.Result) {

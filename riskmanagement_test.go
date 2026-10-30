@@ -24,7 +24,7 @@ func TestInterestSensitivity(t *testing.T) {
 		Redemption: 100.0,
 	}
 	// define flat yield curve
-	ts := term.Flat{2.0, 0.0}
+	ts := term.Flat{R: 2.0, Spread: 0.0}
 
 	// calculate sensitivity
 	pvbp := fixedincome.PVBP(&bond, &ts)

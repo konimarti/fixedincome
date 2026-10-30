@@ -3,8 +3,8 @@ colnames(df)<-c("TTM","QuotedPrice","InitialRate","FinalRateNss","FinalRateSplin
 df<-df[df$TTM>=2/12,]
 max<-max(df[,c(3,4,5)])
 min<-min(df[,c(3,4,5)])
-maxP<-max(df[,c(6,7)])
-minP<-min(df[,c(6,7)])
+maxP<-max(df[,c(2,6,7)])
+minP<-min(df[,c(2,6,7)])
 maxZ<-max(df[,c(8,9)])
 minZ<-min(df[,c(8,9)])
 save<-par(mfrow=c(3,1),mar=c(2,4,2,4))

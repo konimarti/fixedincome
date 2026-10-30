@@ -5,14 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
+	"os"
 
 	"github.com/konimarti/fixedincome/pkg/instrument/swap"
 	"github.com/konimarti/fixedincome/pkg/term"
 )
 
 var (
-	spread   = flag.Float64("s", 10.0, "spread in bps for yield curve")
+	spread   = flag.Float64("s", 0.0, "spread in bps for yield curve")
 	fileFlag = flag.String("f", "term.json", "json file containing the parameters for the Nelson-Siegel-Svensson term structure")
 )
 
@@ -22,23 +22,18 @@ func main() {
 	// read term structure parameters
 	termData, err := ioutil.ReadFile(*fileFlag)
 	if err != nil {
-		log.Println(err)
+		fatalTerm(fmt.Errorf("reading term structure failed: %w", err))
 	}
 
 	ts, err := term.Parse(termData)
 	if err != nil {
-		log.Println(err)
-		log.Println("Use the following template for the Nelson-Siegel-Svensson yield curve:")
-		data, err := json.MarshalIndent(term.NelsonSiegelSvensson{}, " ", "")
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(string(data))
-		return
+		fatalTerm(fmt.Errorf("parsing term structure from %s failed: %w", *fileFlag, err))
 	}
+	fmt.Fprintln(os.Stderr, "Term model read from", *fileFlag)
 
-	// add spread to term structure
+	// set the spread of the term structure explicitly
 	ts.SetSpread(*spread)
+	fmt.Fprintf(os.Stderr, "Spread: %.2f bps\n", *spread)
 
 	// calculate swap rate for maturities t
 	fmt.Println("Maturity\tSwap Rate")
@@ -49,8 +44,19 @@ func main() {
 		}
 		swaprate, err := swap.InterestRate(m, 2, ts)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
 		}
 		fmt.Printf("%2.1f\t\t%6.2f\n", t, swaprate)
 	}
+}
+
+// fatalTerm prints the error and a template for the term structure file to
+// stderr and exits with a non-zero exit code
+func fatalTerm(err error) {
+	fmt.Fprintln(os.Stderr, "error:", err)
+	fmt.Fprintln(os.Stderr, "Use the following template for the Nelson-Siegel-Svensson yield curve:")
+	data, _ := json.MarshalIndent(term.NelsonSiegelSvensson{}, " ", "")
+	fmt.Fprintln(os.Stderr, string(data))
+	os.Exit(1)
 }

@@ -8,6 +8,11 @@ type Flat struct {
 	Spread float64 `json:"spread"`
 }
 
+// GetSpread returns the spread in bps
+func (f *Flat) GetSpread() float64 {
+	return f.Spread
+}
+
 // SetSpread sets the spread in bps
 func (f *Flat) SetSpread(spread float64) Structure {
 	f.Spread = spread

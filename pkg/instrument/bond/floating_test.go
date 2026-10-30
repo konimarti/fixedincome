@@ -32,8 +32,8 @@ var (
 		Redemption: 100.0,
 	}
 	floatingTerm = term.Flat{
-		rate.Continuous(2.0, floatingBond.Schedule.Compounding()),
-		0.0,
+		R:      rate.Continuous(2.0, floatingBond.Schedule.Compounding()),
+		Spread: 0.0,
 	}
 )
 

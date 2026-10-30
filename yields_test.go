@@ -56,13 +56,13 @@ func TestYields(t *testing.T) {
 
 	// term structure (parameters per 2021-04-01 for CH govt bonds)
 	term := term.NelsonSiegelSvensson{
-		-0.266372,
-		-0.471343,
-		5.68789,
-		-5.12324,
-		5.74881,
-		4.14426,
-		0.0, // spread
+		B0:     -0.266372,
+		B1:     -0.471343,
+		B2:     5.68789,
+		B3:     -5.12324,
+		T1:     5.74881,
+		T2:     4.14426,
+		Spread: 0.0,
 	}
 
 	// loop over tests
@@ -98,14 +98,14 @@ func TestYields(t *testing.T) {
 
 func TestImpliedVola(t *testing.T) {
 	testOption := option.European{
-		option.Call,
-		110.0,
-		100.0,
-		2.0,
-		0.0,
-		math.Pi,
+		Type: option.Call,
+		S:    110.0,
+		K:    100.0,
+		T:    2.0,
+		Q:    0.0,
+		Vola: math.Pi,
 	}
-	ts := term.Flat{2.0, 0.0}
+	ts := term.Flat{R: 2.0, Spread: 0.0}
 
 	expected := 0.3
 
@@ -129,5 +129,35 @@ func TestImpliedVola(t *testing.T) {
 		if err != nil || math.Abs(vola-expected) > 0.0001 {
 			t.Error("Type", test.OptionType, "Got", vola, "Expected", expected)
 		}
+	}
+}
+
+// TestImpliedVola_SetsRoot checks that the option's volatility is set to the
+// implied volatility on success and restored on failure
+func TestImpliedVola_SetsRoot(t *testing.T) {
+	ts := term.Flat{R: 2.0, Spread: 0.0}
+	opt := option.European{Type: option.Call, S: 110.0, K: 100.0, T: 2.0, Q: 0.0, Vola: 0.3}
+	price := opt.PresentValue(&ts)
+
+	opt.Vola = 0.9
+	vola, err := fixedincome.ImpliedVola(price, &opt, &ts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(vola-0.3) > 1e-6 {
+		t.Errorf("wrong implied vola; got %v, expected %v", vola, 0.3)
+	}
+	if opt.Vola != vola {
+		t.Errorf("option vola not set to the root; got %v, expected %v", opt.Vola, vola)
+	}
+
+	// price below the lower arbitrage bound S - K*Z(T): no solution
+	opt.Vola = 0.9
+	_, err = fixedincome.ImpliedVola(1.0, &opt, &ts)
+	if err == nil {
+		t.Errorf("expected error for price below arbitrage bound")
+	}
+	if opt.Vola != 0.9 {
+		t.Errorf("option vola not restored on error; got %v, expected %v", opt.Vola, 0.9)
 	}
 }

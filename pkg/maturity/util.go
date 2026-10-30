@@ -2,17 +2,17 @@ package maturity
 
 import "time"
 
-//DaysInYear calculates the number of days in the given year
+// DaysInYear calculates the number of days in the given year
 func DaysInYear(year int) float64 {
 	return float64(time.Date(year, 12, 31, 0, 0, 0, 0, time.UTC).YearDay())
 }
 
-//LastDay of a given year
+// LastDay of a given year
 func LastDay(year int) time.Time {
 	return time.Date(year, 12, 31, 0, 0, 0, 0, time.UTC)
 }
 
-//FirstDay of a given year
+// FirstDay of a given year
 func FirstDay(year int) time.Time {
 	return time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
 }

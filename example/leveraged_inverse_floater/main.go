@@ -126,5 +126,4 @@ func (b *bootstrap) Z(t float64) float64 {
 		}
 	}
 	panic("asking for Z(t) that cannot be bootstrapped")
-	return 0.0
 }

@@ -19,9 +19,15 @@ func (f *Floating) Accrued() float64 {
 	return f.Rate * f.Schedule.DayCountFraction()
 }
 
-// PresentValue returns the "dirty" bond prices (for the "clean" price just subtract the accrued interest)
+// PresentValue returns the "dirty" bond prices (for the "clean" price just subtract the accrued interest).
+// A bond that has matured (settlement date not before the maturity date) has
+// a value of zero.
 func (f *Floating) PresentValue(ts term.Structure) float64 {
 	pv := 0.0
+
+	if !f.Settlement.Before(f.Maturity) {
+		return 0.0
+	}
 
 	// discount face value at next reset date
 	effRate := f.EffectiveCoupon(f.Rate)

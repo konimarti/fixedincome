@@ -15,8 +15,8 @@ func TestStock_EuropeanCall(t *testing.T) {
 
 	// define term structure
 	term := term.Flat{
-		2.0,
-		0.0,
+		R:      2.0,
+		Spread: 0.0,
 	}
 
 	// define parameters for ho lee model
@@ -44,7 +44,7 @@ func TestStock_EuropeanCall(t *testing.T) {
 
 	// calculate reference price with Black Scholes
 	refCall := option.European{
-		option.Call, S, K, T, 0.0, sigma,
+		Type: option.Call, S: S, K: K, T: T, Q: 0.0, Vola: sigma,
 	}
 	refCallValue := refCall.PresentValue(&term)
 
@@ -58,7 +58,12 @@ func TestStock_EuropeanCall(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if math.Abs(europeanCall-refCallValue) > 0.05 {
-		t.Errorf("stock model failed to price the European call option; got: %v, expected: %v", europeanCall, refCallValue)
+	stderr, err := engine.StdError()
+	if err != nil {
+		t.Error(err)
+	}
+	// accept deviations within 4 standard errors of the Monte Carlo estimate
+	if math.Abs(europeanCall-refCallValue) > 4.0*stderr {
+		t.Errorf("stock model failed to price the European call option; got: %v, expected: %v, standard error: %v", europeanCall, refCallValue, stderr)
 	}
 }

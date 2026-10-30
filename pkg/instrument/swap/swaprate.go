@@ -19,14 +19,23 @@ func FxRate(currentFx float64, cashflows, maturities []float64, tsLong, tsShort 
 
 // InterestRate returns the swap rate. The swap rate c is given by the number that makes
 // the value of the swap V(0;c,T) equal to zero at initiation.
+// The maturities can be given in any order; the final maturity T is the
+// largest one.
 func InterestRate(maturities []float64, compounding int, ts term.Structure) (float64, error) {
+	if len(maturities) == 0 {
+		return 0.0, fmt.Errorf("no maturities given")
+	}
 	var sum float64
+	last := maturities[0]
 	for _, t := range maturities {
 		sum += ts.Z(t)
+		if t > last {
+			last = t
+		}
 	}
 	if sum == 0.0 {
 		return 0.0, fmt.Errorf("sum of zero-coupon bonds across maturities is zero")
 	}
-	swaprate := float64(compounding) * ((1.0 - ts.Z(maturities[len(maturities)-1])) / sum) * 100.0
+	swaprate := float64(compounding) * ((1.0 - ts.Z(last)) / sum) * 100.0
 	return swaprate, nil
 }

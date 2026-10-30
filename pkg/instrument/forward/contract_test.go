@@ -9,7 +9,7 @@ import (
 )
 
 func TestContract(t *testing.T) {
-	ts := term.Flat{2.0, 0.0}
+	ts := term.Flat{R: 2.0, Spread: 0.0}
 	forwardPrice, _ := forward.ZeroBondPrice(1.0, 2.0, &ts)
 	contract := forward.Contract{
 		K: forwardPrice,
@@ -24,7 +24,7 @@ func TestContract(t *testing.T) {
 }
 
 func TestZeroBondPrice(t *testing.T) {
-	ts := term.Flat{2.0, 0.0}
+	ts := term.Flat{R: 2.0, Spread: 0.0}
 	forwardPrice, err := forward.ZeroBondPrice(1.0, 2.0, &ts)
 	if err != nil {
 		t.Error(err)

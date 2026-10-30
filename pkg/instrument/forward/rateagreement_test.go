@@ -9,7 +9,7 @@ import (
 )
 
 func TestRateAgreement(t *testing.T) {
-	ts := term.Flat{2.0, 0.0}
+	ts := term.Flat{R: 2.0, Spread: 0.0}
 	t1, t2 := 1.0, 2.0
 	m := ts.Z(t1) / ts.Z(t2)
 	fra := forward.RateAgreement{

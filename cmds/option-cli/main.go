@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/konimarti/fixedincome/pkg/instrument/option"
@@ -23,18 +24,29 @@ func main() {
 	flag.Parse()
 
 	// parse option type
-	optionType := option.Call
-	if strings.ToUpper(*optionT) == "PUT" {
+	var optionType int
+	switch strings.ToUpper(*optionT) {
+	case "CALL":
+		optionType = option.Call
+	case "PUT":
 		optionType = option.Put
+	default:
+		fmt.Fprintf(os.Stderr, "error: invalid option type %q: must be 'call' or 'put'\n", *optionT)
+		os.Exit(2)
 	}
 
 	// create European option
 	euOption := option.European{
-		optionType, *stockPrice, *strikePrice, *maturity, *divyield, *vola,
+		Type: optionType,
+		S:    *stockPrice,
+		K:    *strikePrice,
+		T:    *maturity,
+		Q:    *divyield,
+		Vola: *vola,
 	}
 
 	// create flat yield curve
-	term := term.Flat{*discountRate, 0.0}
+	term := term.Flat{R: *discountRate, Spread: 0.0}
 
 	// print option price and the 'Greeks'
 	if euOption.Type == option.Call {

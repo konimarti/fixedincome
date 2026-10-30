@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -35,21 +36,14 @@ func main() {
 	// read term structure parameters and create NSS model
 	termData, err := ioutil.ReadFile(*fileFlag)
 	if err != nil {
-		log.Println(err)
+		fatalTerm(fmt.Errorf("reading term structure failed: %w", err))
 	}
 
 	ts, err := term.Parse(termData)
 	if err != nil {
-		log.Println(err)
-		log.Println("no file given for term structure parameters. Use template for e.g. Nelson-Siegel-Svensson:")
-		data, err := json.MarshalIndent(term.NelsonSiegelSvensson{}, " ", "")
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(string(data))
-		return
+		fatalTerm(fmt.Errorf("parsing term structure from %s failed: %w", *fileFlag, err))
 	}
-	fmt.Println("Term model read from", *fileFlag)
+	fmt.Fprintln(os.Stderr, "Term model read from", *fileFlag)
 
 	// parse quote and maturity dates
 	quoteDate, err := time.Parse("2006-01-02", *settlementFlag)
@@ -59,6 +53,10 @@ func main() {
 	maturityDate, err := time.Parse("2006-01-02", *maturityFlag)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if !quoteDate.Before(maturityDate) {
+		log.Fatalf("bond has matured: settlement date %s is not before maturity date %s",
+			quoteDate.Format("2006-01-02"), maturityDate.Format("2006-01-02"))
 	}
 
 	// create fixed-coupon bond
@@ -126,4 +124,14 @@ func main() {
 	}
 	fmt.Printf("  Implied spread      %10.1f bps\n", spread)
 
+}
+
+// fatalTerm prints the error and a template for the term structure file to
+// stderr and exits with a non-zero exit code
+func fatalTerm(err error) {
+	fmt.Fprintln(os.Stderr, "error:", err)
+	fmt.Fprintln(os.Stderr, "Use the following template for e.g. the Nelson-Siegel-Svensson term structure:")
+	data, _ := json.MarshalIndent(term.NelsonSiegelSvensson{}, " ", "")
+	fmt.Fprintln(os.Stderr, string(data))
+	os.Exit(1)
 }

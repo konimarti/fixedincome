@@ -16,13 +16,13 @@ func TestInterestRateSwap(t *testing.T) {
 	// Parameters for CHF yield curve at Nov-30-2021
 	// added 17bps z-spread for counterparty risk
 	term := term.NelsonSiegelSvensson{
-		-0.43381,
-		-0.308942,
-		4.83643,
-		-4.10991,
-		4.65211,
-		3.33637,
-		17.0,
+		B0:     -0.43381,
+		B1:     -0.308942,
+		B2:     4.83643,
+		B3:     -4.10991,
+		T1:     4.65211,
+		T2:     3.33637,
+		Spread: 17.0,
 	}
 
 	maturities := []int{

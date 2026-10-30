@@ -18,9 +18,15 @@ func (b *Straight) Accrued() float64 {
 }
 
 // PresentValue returns the "dirty" bond prices
-// (for the "clean" price just subtract the accrued interest)
+// (for the "clean" price just subtract the accrued interest).
+// A bond that has matured (settlement date not before the maturity date) has
+// a value of zero.
 func (b *Straight) PresentValue(ts term.Structure) float64 {
 	dcf := 0.0
+
+	if !b.Settlement.Before(b.Maturity) {
+		return 0.0
+	}
 
 	// discount coupon payments
 	effCoupon := b.EffectiveCoupon(b.Coupon)

@@ -53,13 +53,13 @@ Many central banks offer daily updates of the fitted parameters for the Nelson-S
 	// define term structure
         // Nelson-Siegel-Svensson parameters as 2021-03-31 for Swiss government bonds
 	term := term.NelsonSiegelSvensson{
-		-0.266372,
-		-0.471343,
-		5.68789,
-		-5.12324,
-		5.74881,
-		4.14426,
-		0.0,
+		B0:     -0.266372,
+		B1:     -0.471343,
+		B2:     5.68789,
+		B3:     -5.12324,
+		T1:     5.74881,
+		T2:     4.14426,
+		Spread: 0.0,
 	}
 ```
 
@@ -68,17 +68,18 @@ Many central banks offer daily updates of the fitted parameters for the Nelson-S
 	value := straightBond.PresentValue(&term)
 
 	// modified duration
-	duration := straightBond.Duration( &term)
+	duration := straightBond.Duration(&term)
 
 	// accrued interest (30/360 day convention) and "dirty" price of bond
 	accrued := straightBond.Accrued()
 	cleanPrice := value - accrued
 
 	// internal rate of return given a market price
-	irr, _ := fixedincome.IRR(109.70, straightBond)
+	// (Irr and Spread expect the "dirty" price, i.e. quote plus accrued interest)
+	irr, _ := fixedincome.Irr(109.70+accrued, &straightBond)
 
 	// implied static spread
-	spread, _ := fixedincome.Spread(109.70, straightBond, &term)
+	spread, _ := fixedincome.Spread(109.70+accrued, &straightBond, &term)
 ```
 
 ## Further reading

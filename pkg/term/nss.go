@@ -14,6 +14,11 @@ type NelsonSiegelSvensson struct {
 	Spread float64 `json:"spread"`
 }
 
+// GetSpread returns the spread in bps
+func (nss *NelsonSiegelSvensson) GetSpread() float64 {
+	return nss.Spread
+}
+
 // SetSpread sets the constant spread that is added to the continuously
 // compounded rate over all maturities
 func (nss *NelsonSiegelSvensson) SetSpread(s float64) Structure {

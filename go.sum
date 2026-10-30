@@ -19,8 +19,6 @@ github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/khezen/rootfinding v1.0.1 h1:zg+l7e6INBuDM0ggYVUdFXSZP7FazV1Y51avoTFh1d8=
 github.com/khezen/rootfinding v1.0.1/go.mod h1:4QfAq3+EOK7ppR/62app1p6CG9h8niDYX0ttcClnCOU=
-github.com/konimarti/daycount v0.0.2 h1:FQ9x3vHe/9GnrAYXJ6RnXeMKkwU4Q+zfbzJQ5+3dJKE=
-github.com/konimarti/daycount v0.0.2/go.mod h1:nC25jrhS2dFCelOXroMoev4IE8m47A+RIrsURSgvuUw=
 github.com/konimarti/daycount v0.0.3-0.20211210225146-e3e1587af758 h1:JL/kA/PI0n4N9sa63mb1zTMExjuuBan+mtDv/m8f8Ys=
 github.com/konimarti/daycount v0.0.3-0.20211210225146-e3e1587af758/go.mod h1:nC25jrhS2dFCelOXroMoev4IE8m47A+RIrsURSgvuUw=
 github.com/phpdave11/gofpdf v1.4.2/go.mod h1:zpO6xFn9yxo3YLyMvW8HcKWVdbNqgIfOOp2dXMnm1mY=

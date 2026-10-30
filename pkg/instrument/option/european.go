@@ -1,6 +1,7 @@
 package option
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/konimarti/fixedincome/pkg/term"
@@ -13,7 +14,9 @@ const (
 
 // European is the implementation of plain vanilla European option
 type European struct {
-	// Type is the type of the option (call=0, put=1)
+	// Type is the type of the option (call=0, put=1). Any other value is
+	// invalid and PresentValue, Delta and Rho panic for it (Gamma and Vega
+	// do not depend on the option type).
 	Type int
 	// S is the price of the underlying asset
 	S float64
@@ -27,18 +30,32 @@ type European struct {
 	Vola float64
 }
 
-// Presentvalues implements the Black-Scholes pricing for European call and put options
+// dividendDiscount returns the discount factor exp(-q*T) for the dividend
+// yield Q (given in percent)
+func (e *European) dividendDiscount() float64 {
+	return math.Exp(-e.Q / 100.0 * e.T)
+}
+
+// sign returns +1 for a call and -1 for a put option; it panics for an
+// invalid option type
+func (e *European) sign() float64 {
+	switch e.Type {
+	case Call:
+		return 1.0
+	case Put:
+		return -1.0
+	}
+	panic(fmt.Sprintf("invalid option type %d: must be option.Call (%d) or option.Put (%d)", e.Type, Call, Put))
+}
+
+// Presentvalues implements the Black-Scholes pricing for European call and put options.
+// It panics if the option type is neither Call nor Put.
 func (e *European) PresentValue(ts term.Structure) float64 {
-	var value float64
+	sign := e.sign()
 	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
 	d2 := D2(d1, e.T, e.Vola)
 	z := ts.Z(e.T)
-	if e.Type == Call {
-		value = e.S*math.Exp(-e.Q/100.0*e.T)*N(d1) - e.K*z*N(d2)
-	} else if e.Type == Put {
-		value = -e.S*math.Exp(-e.Q/100.0*e.T)*N(-d1) + e.K*z*N(-d2)
-	}
-	return value
+	return sign * (e.S*e.dividendDiscount()*N(sign*d1) - e.K*z*N(sign*d2))
 }
 
 // SetVola sets the volatility (needed for the calculation of the implied volatility)
@@ -46,39 +63,38 @@ func (e *European) SetVola(newVola float64) {
 	e.Vola = newVola
 }
 
+// GetVola returns the volatility
+func (e *European) GetVola() float64 {
+	return e.Vola
+}
+
 // implement the 'Greeks'
 
 // Delta
 func (e *European) Delta(ts term.Structure) float64 {
+	sign := e.sign()
 	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
-	sign := 1.0
-	if e.Type == Put {
-		sign = -1.0
-	}
-	return sign * math.Exp(-e.Q*e.T) * N(sign*d1)
+	return sign * e.dividendDiscount() * N(sign*d1)
 }
 
 // Gamma
 func (e *European) Gamma(ts term.Structure) float64 {
 	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
-	return math.Exp(-e.Q*e.T) * Napostroph(d1) / (e.S * e.Vola * math.Sqrt(e.T))
+	return e.dividendDiscount() * Napostroph(d1) / (e.S * e.Vola * math.Sqrt(e.T))
 }
 
 // Rho
 func (e *European) Rho(ts term.Structure) float64 {
+	sign := e.sign()
 	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
 	d2 := D2(d1, e.T, e.Vola)
-	sign := 1.0
-	if e.Type == Put {
-		sign = -1.0
-	}
 	return sign * e.K * e.T * math.Exp(-(ts.Rate(e.T)/100.0)*e.T) * N(sign*d2)
 }
 
 // Vega
 func (e *European) Vega(ts term.Structure) float64 {
 	d1 := D1(e.S, e.K, e.T, e.Q, e.Vola, ts)
-	return math.Exp(-e.Q*e.T) * e.S * math.Sqrt(e.T) * Napostroph(d1)
+	return e.dividendDiscount() * e.S * math.Sqrt(e.T) * Napostroph(d1)
 }
 
 // helper function for Black Scholes formula

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -20,27 +19,33 @@ var (
 	nInput        = flag.Int("n", 1000, "number of time steps")
 	maturityInput = flag.Float64("m", 10.0, "maturity in years for simulation")
 	sigmaInput    = flag.Float64("s", 0.02, "standard deviation of interest rates")
+	seedInput     = flag.Int64("seed", 0, "seed for the random number generator (0: time-based seed)")
 )
 
 func main() {
 	flag.Parse()
 
 	// read term structure
-	nssData, err := ioutil.ReadFile(*fileFlag)
+	termData, err := ioutil.ReadFile(*fileFlag)
 	if err != nil {
-		log.Println(err)
+		log.Fatalf("reading term structure failed: %v", err)
 	}
 
-	var ts term.NelsonSiegelSvensson
-	err = json.Unmarshal(nssData, &ts)
+	ts, err := term.Parse(termData)
 	if err != nil {
-		panic(err)
+		log.Fatalf("parsing term structure from %s failed: %v", *fileFlag, err)
 	}
 
 	// define parameters
 	n := *nInput
 	T := *maturityInput
 	sigma := *sigmaInput
+	if n < 2 {
+		log.Fatalf("number of time steps must be at least 2, got %d", n)
+	}
+	if !(T > 0.0) {
+		log.Fatalf("maturity must be positive, got %v", T)
+	}
 	dt := T / float64(n)
 
 	// print parameters for info
@@ -92,7 +97,10 @@ func main() {
 	// print out current rates vs. Ho-Lee rates
 	fmt.Println("Time\tZ_term\tZ_HoLee")
 	for t := 0.5; t <= T; t += 0.5 {
-		i := int((t / dt)) - 1
+		i := int(math.Round(t/dt)) - 1
+		if i < 0 || i >= n {
+			continue
+		}
 		z := math.Exp(-rHoLee[i] * t)
 		fmt.Printf("%6.2f\t%8.6f\t%8.6f\t%8.6f\t%8.6f\n", t, ts.Z(t)*100.0, z*100.0, ts.Rate(t), 100.0*rHoLee[i])
 	}
@@ -120,9 +128,14 @@ func main() {
 
 	// Monte Carlo pricing with the continuous-time Ho-Lee interest rate model:
 	// Zero Bond
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	t := 10.0
-	n = int(t / dt)
+	seed := *seedInput
+	if seed == 0 {
+		seed = time.Now().UnixNano()
+	}
+	rng := rand.New(rand.NewSource(seed))
+	// simulate up to the maturity T on the grid defined above (theta has n
+	// entries)
+	t := T
 	nsim := 10000
 	payoff := 100.0
 	mc := make([]float64, nsim)
@@ -147,16 +160,21 @@ func main() {
 	for j := 0; j < nsim; j += 1 {
 		estimate += mc[j]
 	}
-	estimate = math.Round(1e4*estimate/float64(nsim)) / 1e4
+	estimate = estimate / float64(nsim)
 
+	// standard error is calculated with the unrounded mean
 	stderror := 0.0
 	for j := 0; j < nsim; j += 1 {
 		stderror += math.Pow(mc[j]-estimate, 2.0)
 	}
-	stderror = math.Round(1e4*math.Sqrt(stderror/float64(nsim))/math.Sqrt(float64(nsim))) / 1e4
+	stderror = math.Sqrt(stderror/float64(nsim)) / math.Sqrt(float64(nsim))
+	ci0, ci1 := estimate-1.96*stderror, estimate+1.96*stderror
+	estimate = math.Round(1e4*estimate) / 1e4
+	stderror = math.Round(1e4*stderror) / 1e4
 
 	fmt.Println("Monte Carlo Z(", t, ")=", estimate)
-	fmt.Println("[", math.Round(1e4*(estimate-1.96*stderror))/1e4, ",", math.Round(1e4*(estimate+1.96*stderror))/1e4, "]")
+	fmt.Println("[", math.Round(1e4*ci0)/1e4, ",", math.Round(1e4*ci1)/1e4, "]")
+	fmt.Println("Std. error     =", stderror, "(seed:", seed, ")")
 	fmt.Println("Reference   Z(", t, ")=", ts.Z(t)*100.0)
 
 }
