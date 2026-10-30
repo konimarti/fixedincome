@@ -1,80 +1,66 @@
+// Package holee implements the Ho-Lee short rate model
+//
+//	dr = θ(t) dt + σ dW
+//
+// under the risk-neutral measure, with θ(t) = f'(0,t) + σ² t chosen such
+// that the model reproduces the initial discount curve exactly. It is the
+// Hull-White model with zero mean reversion (see package hullwhite for the
+// simulation scheme). Rates and σ are decimals (σ = 0.01 is a normal
+// volatility of 100bp per square root of a year), times are in years.
 package holee
 
 import (
-	"math"
-	"math/rand"
-	"time"
-
+	"github.com/konimarti/fixedincome/pkg/mc"
+	"github.com/konimarti/fixedincome/pkg/mc/model/hullwhite"
 	"github.com/konimarti/fixedincome/pkg/term"
 )
 
-// HoLee implements the Ho-Lee interest rate model
+// HoLee is the Ho-Lee model fitted to an initial curve. Create it with New.
 type HoLee struct {
-	// R0 is the initial short rate (known today; continuously compounded,
-	// decimal)
-	R0 float64
-	// Sigma is the standard deviation of the short term interest rate
-	// (decimal per square root of a year)
-	Sigma float64
-	// T is the maturity (up to which to calculate the interes rates)
-	T float64
-	// N represents number of steps
-	N int
-	// Theta are the parameters of the Ho-Lee model
-	Theta []float64
-	// Rng is the random number generator (NormFloat64)
-	Rng *rand.Rand
-	// Payoff returns the discounted payoff for the given simulated rates
-	Payoff func([]float64) float64
+	hw hullwhite.HullWhite
 }
 
-// New creates a new Ho-Lee model
-func New(ts term.Curve, sigma, t float64, n int, payoff func([]float64) float64) (*HoLee, error) {
-	hl := &HoLee{
-		R0:     ts.ZeroRate(t / float64(n)),
-		Sigma:  sigma,
-		T:      t,
-		N:      n,
-		Theta:  make([]float64, n),
-		Rng:    rand.New(rand.NewSource(time.Now().UnixNano())),
-		Payoff: payoff,
+var _ mc.Model = (*HoLee)(nil)
+
+// New returns the Ho-Lee model with volatility sigma >= 0 (decimal per
+// square root of a year) calibrated to the curve c. The calibration is
+// exact and implicit: the short rate is r(t) = σW(t) + φ(t) with
+// φ(t) = f(0,t) + σ²t²/2, and the discount integral uses
+// ∫_0^t φ = -ln Z(0,t) + σ²t³/6 (exact on every grid node).
+func New(c term.Curve, sigma float64) (*HoLee, error) {
+	hw, err := hullwhite.New(c, 0, sigma)
+	if err != nil {
+		return nil, err
 	}
-	err := Calibrate(hl, ts)
-	return hl, err
+	return &HoLee{hw: *hw}, nil
 }
 
-// Calibrate calculates the parameters of the Ho-Lee model (theta's) to match the current yield curve
-func Calibrate(hl *HoLee, ts term.Curve) error {
-	n := hl.N
-	dt := hl.T / float64(n)
+// Curve returns the initial curve.
+func (m *HoLee) Curve() term.Curve { return m.hw.Curve }
 
-	r := make([]float64, n+2)
-	f := make([]float64, n+1)
+// Sigma returns the volatility (decimal per square root of a year).
+func (m *HoLee) Sigma() float64 { return m.hw.Sigma }
 
-	// calculate current rates, forward rates and thetas on the grid
-	for i := 0; i < n+2; i += 1 {
-		r[i] = ts.ZeroRate(float64(i+1) * dt)
-	}
-	for i := 0; i < n+1; i += 1 {
-		// f[i] = r[i] + float64(i+1)*(r[i+1]-r[i])
-		f[i] = -math.Log(ts.Discount(float64(i+2)*dt)/ts.Discount(float64(i+1)*dt)) / dt
-	}
-	for i := 0; i < n; i += 1 {
-		hl.Theta[i] = (f[i+1]-f[i])/dt + math.Pow(hl.Sigma, 2.0)*float64(i+1)*dt
-	}
-	return nil
-}
+// R0 returns the initial short rate r(0) = f(0,0) (decimal), set by the
+// calibration.
+func (m *HoLee) R0() float64 { return m.hw.R0() }
 
-// Measurement implements the model interface for the Monte Carlo engine
-func (hl *HoLee) Measurement() float64 {
-	n := hl.N
-	dt := hl.T / float64(n)
-	rates := make([]float64, n)
+// Theta returns θ(t) = f'(0,t) + σ²t (decimal per year; f' by central
+// differences).
+func (m *HoLee) Theta(t float64) float64 { return m.hw.Theta(t) }
 
-	// simulate interest rates
-	rates[0] = hl.R0
-	for i := 0; i < (n - 1); i += 1 {
-		rates[i+1] = rates[i] + hl.Theta[i]*dt + hl.Sigma*math.Sqrt(dt)*hl.Rng.NormFloat64()
-	}
-	return hl.Payoff(rates)
+// Phi returns E[r(t)] = f(0,t) + σ²t²/2.
+func (m *HoLee) Phi(t float64) float64 { return m.hw.Phi(t) }
+
+// Z returns the model price at time t of the zero-coupon bond with face
+// value 1 maturing at T >= t given r(t) = r:
+//
+//	Z(r;t,T) = Z(0,T)/Z(0,t) exp((T-t) f(0,t) - σ²/2 t (T-t)² - (T-t) r).
+func (m *HoLee) Z(r, t, T float64) float64 { return m.hw.Z(r, t, T) }
+
+// Discretize returns the exact simulator on g (State[0] = short rate, Df =
+// pathwise discount factor; E[Df[i]] = Z(0,t_i) for every grid, Df[i] =
+// Z(0,t_i) for σ = 0).
+func (m *HoLee) Discretize(g *mc.Grid) (mc.Simulator, error) {
+	return m.hw.Discretize(g)
 }

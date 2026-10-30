@@ -1,5 +1,100 @@
 # Changelog
 
+## WP4: Monte Carlo (breaking)
+
+`pkg/mc` has been rewritten: a model is discretised on an explicit time
+grid, paths are simulated exactly (no Euler bias), the engine is parallel,
+seedable and allocation-free per path, and the estimates come with honest
+standard errors.
+
+### Design
+
+- `mc.Grid` has N+1 nodes `t_0 = 0, ..., t_N = T` (`NewUniformGrid(T, n)`,
+  `NewGrid(times)`); previously the paths had N points and stopped at
+  `T - dt`.
+- `mc.Model.Discretize(grid) (Simulator, error)` precomputes the grid
+  coefficients; `Simulator.Simulate(z, path)` maps `Dim()` standard
+  normals to a `mc.Path{Grid, State [][]float64, Df []float64}` with the
+  pathwise discount factor `Df[i] = exp(-∫_0^{t_i} r ds)`. Negating `z`
+  gives the antithetic path.
+- `mc.Price(model, payoff, grid, opts)`, `mc.PriceMulti` (vector payoffs,
+  e.g. `mc.ZeroBonds` for the whole model curve) and `mc.PriceAmerican`
+  (Longstaff-Schwartz) return `mc.Result{Mean, StdErr, N, Paths, Beta}`
+  with `CI95()`.
+- `mc.Options{Paths, Workers, Seed, Antithetic, Control, TrainingPaths}`:
+  the samples are split into blocks of `mc.BlockSize` with one xoshiro256**
+  stream per block derived from `(Seed, block)`; results are identical for
+  any number of workers (default `GOMAXPROCS`). Welford/Chan accumulation,
+  variance with n-1. The block statistics are merged in block order as
+  soon as all earlier blocks are done (reorder window of 2×Workers
+  blocks), so the memory does not grow with the number of paths
+  (`PriceMulti` with `ZeroBonds`, N = 1000: 1.8 / 15.7 / 58.7 MB for
+  2^14 / 2^18 / 2^20 paths before, 1.8 / 4.6 / 4.5 MB now).
+- Control variates: β is estimated on a pilot sample (the first
+  min(256, samples/10) samples, excluded from the estimate), so the
+  estimator is unbiased and its standard error honest for small samples;
+  at least `mc.MinControlSamples` (30) samples are required.
+- Panics in simulators, payoffs, controls and exercise functions are
+  returned as errors (`mc.ErrPanic`); `PriceMulti` rejects a `ZeroBonds`
+  on another grid.
+- Short rate models (`holee`, `hullwhite`, `vasicek`) share an exact
+  simulation of `(x, ∫x)` for the OU factor (2 normals per step); the
+  deterministic part of `∫r` is computed exactly on the nodes, so
+  `E[Df[i]]` equals the model bond price for every grid (Ho-Lee and
+  Hull-White: the curve; σ = 0: to machine precision).
+- `stock.GBM` simulates `ln S` exactly with the forward rates of a curve
+  (`Df[i] S_i` is a martingale on the grid) and a dividend yield `Q`.
+
+### Migration
+
+| Old API | New API |
+|---|---|
+| `mc.New(model, nsim)`, `e.Run()`, `e.Estimate()`, `e.StdError()`, `e.CI()` | `res, err := mc.Price(model, payoff, grid, mc.Options{Paths: nsim, Seed: s})`; `res.Mean`, `res.StdErr` (n-1), `res.CI95()` |
+| `mc.Model{Measurement() float64}` | `mc.Model{Discretize(*Grid) (Simulator, error)}` + `mc.Payoff{Value(*Path) float64}` (`mc.PayoffFunc`) |
+| `Engine.Estimates` (all samples stored) | not stored (streaming moments, memory independent of `Paths`) |
+| `model.Rng = rand.New(...)` (time-seeded by default) | `Options.Seed` (deterministic, worker-independent); `mc.NewRand(seed, stream)` |
+| payoff `func(rates []float64) float64` with N points `0..(N-1)dt`, discounting by summing `rates[i]*dt` | `func(p *mc.Path) float64` on N+1 nodes `0..T`, discount with `p.Df[i]` |
+| `holee.New(ts, sigma, T, N, payoff)`; fields `R0, Theta, Rng, Payoff`; `holee.Calibrate` | `holee.New(curve, sigma) (*HoLee, error)` (calibration implicit and exact); `R0()`, `Theta(t)`, `Phi(t)`, `Z(r, t, T)`, `Discretize(grid)` |
+| — | `hullwhite.New(curve, a, sigma)`: arbitrage-free Hull-White with `Z(r, t, T)`, `Theta`, `Phi`, `IntPhi` |
+| `vasicek.New(ts, sigma, T, N, payoff)` (calibrates r̄, γ silently) | `vasicek.New(r0, rbar, gamma, sigma)`; `vasicek.Calibrate(curve, sigma, maturities) (*Vasicek, Calibration{RMSE, Evaluations, AtBound}, error)` (R0 from the curve) |
+| `vasicek.Calibrate(v, ts)` | `vasicek.Calibrate(curve, sigma, maturities)` |
+| `v.Z(r, t, T)` (singular for γ -> 0) | `v.Z(r, t, T)` (γ >= 0, no singularity), `v.ZeroRate(T)`, `v.Mean(t)` |
+| Vasicek Euler scheme | exact OU transition and exact joint `∫r` |
+| `stock.New(r, s0, sigma, T, N, payoff)` (R: "return") | `stock.New(s0, sigma, q, curve)`; the drift is the risk-free forward rate of the curve minus the dividend yield `q` |
+| payoff closures for options | `stock.European{Type, Strike}`, `stock.Asian{Type, Strike, Geometric}`, `stock.American{Type, Strike, Degree, Model}` (`mc.Exercisable`; use `m.American(type, K)`) |
+| — | `m.European(type, K, T)` (Black-Scholes), `m.GeometricAsian(type, K, grid)` (closed form), `m.TerminalControl(grid)`, `m.EuropeanControl(type, K, grid)`, `m.GeometricAsianControl(type, K, grid)` |
+| — | `mc.PriceAmerican(model, exercisable, grid, opts)` → `AmericanResult{Result (out-of-sample), InSample, InSampleStdErr, TrainingPaths}`; optional `mc.ContinuationBounder`, `mc.Validator` |
+| `cmds/holee` writes `./result.csv` without header (committed sample `cmds/holee/result.csv`, removed); the Monte Carlo part integrated the rates only up to `T - dt` | `holee -f term.json -n 1000 -m 10 -s 0.02 -paths 10000 -seed 0 -o holee.csv` (CSV with header to stdout or `-o`; summary and warnings on stderr); `Rscript analysis.R holee.csv holee.png` |
+
+### Intentional behaviour changes
+
+- Ho-Lee: the old calibration used forwards lagged by one step and
+  integrated the rates up to `T - dt`; the zero bond price was biased by
+  O(dt) even for σ = 0. Exact expectation of the old scheme (NSS curve of
+  the tests): T = 30, N = 50, σ = 0.02: 100.48 instead of 106.09 (-5.61);
+  T = 10, N = 1000, σ = 0.02: -0.030; σ = 0, T = 30, N = 50: -0.37. New:
+  exact for σ = 0 (error < 1e-12), unbiased for σ > 0 (2^20 antithetic
+  paths: 106.131 ± 0.592 vs 106.088).
+- Vasicek: the old calibration (NSS curve of the tests, σ = 0, T = 5,
+  N = 1260, fit up to 1.5 T) ran away to r̄ = 122.5 with γ ≈ 0 (singular
+  parametrisation; σ = 0.01: r̄ = 16.05). Now (κ = γ r̄, bounded γ) with
+  the RMSE reported; Hull-White is the arbitrage-free alternative.
+- American options (Longstaff-Schwartz): the exercise rule only exercises
+  if the intrinsic value is at least the regression estimate and at least
+  a known lower bound of the continuation value (`mc.ContinuationBounder`;
+  for `stock.American` with a model: the European value of the remaining
+  option, which is also a basis function). Without it a call without
+  dividends was sometimes exercised early (LSM below the European price by
+  more than 4 SE for 3 of 60 seeds); now it equals the European Monte
+  Carlo price exactly. Default basis degree 3.
+- Units: all model parameters are decimals; the initial short rate is set
+  from the curve (`f(0,0)`), not passed in.
+- `example/range_floater` reports four variants (flat or model LIBOR ×
+  LIBOR roll-up or pathwise discounting); 200000 paths, seed 1: flat+roll
+  (Veronesi) 99.8116, flat+Df 99.5759, model+roll 99.6022, model+Df
+  (consistent) 99.6070 (book 99.8385 ± 0.0505). The gap comes from
+  discounting at the flat-converted LIBOR, see the example.
+
 ## Unreleased: core redesign (breaking)
 
 The core of the library (curves, schedules, cash flows, instrument
@@ -79,7 +174,7 @@ valuation) has been redesigned. The API is not backwards compatible.
 | `opt.Delta/Gamma/Rho/Vega(ts)` | `opt.Greeks(c) (Greeks, error)` with `Delta, Gamma, Vega, Theta, Rho, Phi` |
 | `fixedincome.ImpliedVola(price, o, ts)` (mutates o) | `option.ImpliedVol(price, opt, c)` (no mutation, bracket [1e-6, 5]; `option.ErrNoImpliedVol`, `option.ErrNoVega`) |
 | `option.D1(S, K, T, Q%, vol, ts)` | `option.D1(S, K, T, r, q, vol)` |
-| `holee.New(ts, ...)`, `vasicek.New(ts, ...)` | same with `term.Curve` (rates in decimal as before) |
+| `holee.New(ts, ...)`, `vasicek.New(ts, ...)` | redesigned in WP4, see "WP4: Monte Carlo" below |
 
 ### Intentional behaviour changes
 

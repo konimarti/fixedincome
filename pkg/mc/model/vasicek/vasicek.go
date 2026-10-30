@@ -1,117 +1,199 @@
+// Package vasicek implements the Vasicek equilibrium short rate model
+//
+//	dr = γ (r̄ - r) dt + σ dW
+//
+// under the risk-neutral measure. Rates, r̄ and σ are decimals (σ in
+// absolute rate units per square root of a year), γ is the mean reversion
+// speed per year (γ = 0 is allowed: Brownian motion without drift), times
+// are in years.
+//
+// The Vasicek model has constant parameters and is not fitted to the
+// initial curve: its bond prices Z(r0;0,T) only approximate a given curve
+// (see Calibrate and the reported RMSE). Use package hullwhite for an
+// arbitrage-free model that reproduces the curve exactly.
 package vasicek
 
 import (
+	"fmt"
 	"math"
-	"math/rand"
-	"time"
 
+	"github.com/konimarti/fixedincome/pkg/mc"
+	"github.com/konimarti/fixedincome/pkg/mc/model/internal/ou"
 	"github.com/konimarti/fixedincome/pkg/term"
 	"gonum.org/v1/gonum/optimize"
 )
 
-// Vasicek implements the basic Vasicek interest rate model
+// Vasicek is the Vasicek model.
 type Vasicek struct {
 	// R0 is the initial short rate (continuously compounded, decimal)
 	R0 float64
 	// Rbar is the long-run mean of the short rate (decimal)
 	Rbar float64
-	// Gamma is the speed of mean reversion (per year)
+	// Gamma is the speed of mean reversion (per year, >= 0)
 	Gamma float64
-	// Sigma is the standard deviation of the first difference of the short term interest rate
+	// Sigma is the volatility of the short rate (decimal per square root of
+	// a year, >= 0)
 	Sigma float64
-	// T is the maturity (up to which to calculate the interes rates)
-	T float64
-	// N represents number of steps
-	N int
-	// Rng is the random number generator (NormFloat64)
-	Rng *rand.Rand
-	// Payoff returns the discounted payoff for the given simulated rates
-	Payoff func([]float64) float64
 }
 
-// New creates a new Vasicek model
-func New(ts term.Curve, sigma, t float64, n int, payoff func([]float64) float64) (*Vasicek, error) {
-	v := &Vasicek{
-		R0:     ts.ZeroRate(t / float64(n)),
-		Rbar:   ts.ZeroRate(t),
-		Gamma:  1.0,
-		Sigma:  sigma,
-		T:      t,
-		N:      n,
-		Rng:    rand.New(rand.NewSource(time.Now().UnixNano())),
-		Payoff: payoff,
+var _ mc.Model = (*Vasicek)(nil)
+
+// New returns the Vasicek model with the given parameters.
+func New(r0, rbar, gamma, sigma float64) (*Vasicek, error) {
+	v := &Vasicek{R0: r0, Rbar: rbar, Gamma: gamma, Sigma: sigma}
+	if err := v.Validate(); err != nil {
+		return nil, err
 	}
-	err := Calibrate(v, ts)
-	return v, err
+	return v, nil
 }
 
-// Calibrate calculates the parameters of the Vasicek model
-func Calibrate(v *Vasicek, ts term.Curve) error {
-
-	// initial estimate
-	x := []float64{
-		// rbar
-		v.Rbar,
-		// gamma
-		v.Gamma,
-	}
-
-	// least-squares function to optimize Vasicek parameters
-	fun := func(x []float64) float64 {
-		v.Rbar, v.Gamma = x[0], x[1]
-		sum := 0.0
-		dt := v.T / float64(v.N)
-		for t := dt; t < v.T*1.5; t += dt {
-			sum += math.Pow(v.Z(v.R0, 0.0, t)-ts.Discount(t), 2.0)
+// Validate checks the parameters.
+func (v *Vasicek) Validate() error {
+	for _, p := range []struct {
+		name string
+		x    float64
+	}{{"R0", v.R0}, {"Rbar", v.Rbar}, {"Gamma", v.Gamma}, {"Sigma", v.Sigma}} {
+		if math.IsNaN(p.x) || math.IsInf(p.x, 0) {
+			return fmt.Errorf("vasicek: %s is not finite: %v", p.name, p.x)
 		}
-		return sum
 	}
-
-	// setup problem
-	p := optimize.Problem{
-		Func: fun,
+	if v.Gamma < 0 {
+		return fmt.Errorf("vasicek: mean reversion speed must be non-negative, got %v", v.Gamma)
 	}
-
-	result, err := optimize.Minimize(p, x, nil, nil)
-	if err != nil {
-		return err
+	if v.Sigma < 0 {
+		return fmt.Errorf("vasicek: volatility must be non-negative, got %v", v.Sigma)
 	}
-	if err = result.Status.Err(); err != nil {
-		return err
-	}
-	// fmt.Printf("result.Status: %v\n", result.Status)
-	// fmt.Printf("result.X: %0.4g\n", result.X)
-	// fmt.Printf("result.F: %0.4g\n", result.F)
-	// fmt.Printf("result.Stats.FuncEvaluations: %d\n", result.Stats.FuncEvaluations)
-
-	// copy results to Vasicek model
-	v.Rbar, v.Gamma = result.X[0], result.X[1]
-
-	// fmt.Println(v.Z(v.R0, 0.0, 4.0), ts.Z(4.0))
-	// fmt.Println(v.Z(v.R0, 0.0, 5.0), ts.Z(5.0))
-	// fmt.Println(v.Z(v.R0, 0.0, 6.0), ts.Z(6.0))
-
 	return nil
 }
 
-// Z returns the Vasicek discount factor Z(r;t,T)
-// Source: P. Veronesi, Fixed Income Securities, p. 539, Eq. 15.28
-func (v *Vasicek) Z(r, t, T float64) float64 {
-	B := 1.0 / v.Gamma * (1 - math.Exp(-v.Gamma*(T-t)))
-	A := (B-(T-t))*(v.Rbar-math.Pow(v.Sigma, 2.0)/(2.0*math.Pow(v.Gamma, 2.0))) - math.Pow(v.Sigma*B, 2.0)/(4.0*v.Gamma)
-	return math.Exp(A - B*r)
+// Mean returns E[r(t)] = r̄ + (r0 - r̄) e^{-γt}.
+func (v *Vasicek) Mean(t float64) float64 {
+	return v.Rbar + (v.R0-v.Rbar)*math.Exp(-v.Gamma*t)
 }
 
-// Measurement implements the model interface for the Monte Carlo engine
-func (v *Vasicek) Measurement() float64 {
-	n := v.N
-	dt := v.T / float64(n)
-	rates := make([]float64, n)
+// intMean returns ∫_0^t E[r(s)] ds = r̄ t + (r0 - r̄) B(γ,t).
+func (v *Vasicek) intMean(t float64) float64 {
+	return v.Rbar*t + (v.R0-v.Rbar)*ou.B(v.Gamma, t)
+}
 
-	// simulate interest rates
-	rates[0] = v.R0
-	for i := 0; i < (n - 1); i += 1 {
-		rates[i+1] = rates[i] + v.Gamma*(v.Rbar-rates[i])*dt + v.Sigma*math.Sqrt(dt)*v.Rng.NormFloat64()
+// Z returns the price at time t of the zero-coupon bond with face value 1
+// maturing at T >= t given the short rate r(t) = r:
+//
+//	Z(r;t,T) = exp(-r̄ τ - (r - r̄) B(γ,τ) + V(τ)/2),   τ = T - t,
+//
+// with B(γ,τ) = (1-e^{-γτ})/γ and V(τ) = Var(∫_t^T r), which is the
+// formula of Veronesi (2010, Eq. 15.28) written without the 1/γ
+// singularity (γ -> 0 gives exp(-rτ + σ²τ³/6)).
+func (v *Vasicek) Z(r, t, T float64) float64 {
+	tau := T - t
+	return math.Exp(-v.Rbar*tau - (r-v.Rbar)*ou.B(v.Gamma, tau) +
+		0.5*ou.VarIntegral(v.Gamma, v.Sigma, tau))
+}
+
+// ZeroRate returns the continuously compounded model zero rate
+// -ln Z(R0;0,T)/T for maturity T > 0 (R0 for T = 0).
+func (v *Vasicek) ZeroRate(T float64) float64 {
+	if T <= 0 {
+		return v.R0
 	}
-	return v.Payoff(rates)
+	return -math.Log(v.Z(v.R0, 0, T)) / T
+}
+
+// Discretize returns the exact simulator on g: the OU transition of r and
+// the exact joint Gaussian transition of ∫r (no Euler discretisation, 2
+// normals per step). State[0][i] = r(t_i), Df[i] = exp(-∫_0^{t_i} r ds)
+// with E[Df[i]] = Z(R0;0,t_i) for every grid.
+func (v *Vasicek) Discretize(g *mc.Grid) (mc.Simulator, error) {
+	if err := v.Validate(); err != nil {
+		return nil, err
+	}
+	return ou.NewSim(g, v.Gamma, v.Sigma, v.Mean, v.intMean), nil
+}
+
+// Calibration reports the fit of Calibrate.
+type Calibration struct {
+	// RMSE is the root mean squared error of the model zero rates against
+	// the curve zero rates at the calibration maturities (decimal)
+	RMSE float64
+	// Evaluations is the number of objective function evaluations
+	Evaluations int
+	// AtBound reports that γ is at MinGamma or MaxGamma (relative
+	// tolerance 1e-6)
+	AtBound bool
+}
+
+// Bounds of the mean reversion speed in Calibrate (per year).
+const (
+	MinGamma = 1e-4
+	MaxGamma = 50.0
+)
+
+// Calibrate fits r̄ and γ of the Vasicek model with the given volatility
+// sigma to the zero rates of the curve c at the maturities (years, > 0) by
+// least squares (Nelder-Mead). R0 is set to the short rate of the curve,
+// c.ZeroRate(0).
+//
+// Parametrisation: the optimiser works on (κ, u) with the drift level
+// κ = γ r̄ and γ = MinGamma + (MaxGamma-MinGamma)/(1 + e^{-u}), so γ stays
+// in (MinGamma, MaxGamma) and the objective stays well-conditioned for
+// γ -> 0, where the model tends to a Brownian motion with drift κ (the
+// bond price has no 1/γ singularity, see Z). If the best fit is at
+// γ = MinGamma (Calibration.AtBound), the curve is better described by a
+// model without mean reversion and r̄ = κ/γ can be very large.
+//
+// The returned Calibration reports the RMSE, which is in general not zero:
+// the Vasicek model cannot reproduce an arbitrary curve (use hullwhite).
+func Calibrate(c term.Curve, sigma float64, maturities []float64) (*Vasicek, Calibration, error) {
+	if c == nil {
+		return nil, Calibration{}, fmt.Errorf("vasicek: nil curve")
+	}
+	if len(maturities) == 0 {
+		return nil, Calibration{}, fmt.Errorf("vasicek: no calibration maturities")
+	}
+	target := make([]float64, len(maturities))
+	for i, t := range maturities {
+		if !(t > 0) || math.IsInf(t, 0) {
+			return nil, Calibration{}, fmt.Errorf("vasicek: calibration maturity must be positive and finite, got %v", t)
+		}
+		target[i] = c.ZeroRate(t)
+		if math.IsNaN(target[i]) || math.IsInf(target[i], 0) {
+			return nil, Calibration{}, fmt.Errorf("vasicek: curve zero rate at %v is not finite", t)
+		}
+	}
+	v := &Vasicek{R0: c.ZeroRate(0), Sigma: sigma}
+	if err := v.Validate(); err != nil {
+		return nil, Calibration{}, err
+	}
+	gamma := func(u float64) float64 {
+		return MinGamma + (MaxGamma-MinGamma)/(1+math.Exp(-u))
+	}
+	evals := 0
+	obj := func(x []float64) float64 {
+		evals++
+		g := gamma(x[1])
+		m := Vasicek{R0: v.R0, Rbar: x[0] / g, Gamma: g, Sigma: sigma}
+		sum := 0.0
+		for i, t := range maturities {
+			d := m.ZeroRate(t) - target[i]
+			sum += d * d
+		}
+		return sum / float64(len(maturities))
+	}
+	// start: long rate as mean, γ = 0.5
+	u0 := -math.Log((MaxGamma-MinGamma)/(0.5-MinGamma) - 1)
+	x0 := []float64{0.5 * target[len(target)-1], u0}
+	res, err := optimize.Minimize(optimize.Problem{Func: obj}, x0,
+		&optimize.Settings{MajorIterations: 5000, Converger: &optimize.FunctionConverge{Absolute: 1e-20, Relative: 1e-12, Iterations: 200}},
+		&optimize.NelderMead{})
+	if err != nil {
+		return nil, Calibration{}, fmt.Errorf("vasicek: calibration failed: %w", err)
+	}
+	v.Gamma = gamma(res.X[1])
+	v.Rbar = res.X[0] / v.Gamma
+	cal := Calibration{RMSE: math.Sqrt(obj(res.X)), Evaluations: evals,
+		AtBound: v.Gamma < MinGamma*(1+1e-6) || v.Gamma > MaxGamma*(1-1e-6)}
+	if err := v.Validate(); err != nil {
+		return nil, cal, err
+	}
+	return v, cal, nil
 }

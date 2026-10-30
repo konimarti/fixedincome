@@ -6,7 +6,7 @@
 
 Valuation of fixed income securities with a spot-rate term structure or continuous-time interest-rate models.
 This package can handle and optimize Nelson-Siegel-Svensson or cubic splines term structures from a list of bonds.
-Monte Carlo simulations can be used to price exotic securities with an interest rate model. Currently, the Ho-Lee and Vasicek models are implemented.
+Monte Carlo simulations (parallel, seedable, with antithetic and control variates) can be used to price exotic securities with an interest rate model (Ho-Lee, Hull-White, Vasicek; exact simulation) or geometric Brownian motion.
 
 Financial instruments covered:
 
@@ -14,8 +14,8 @@ Financial instruments covered:
 - Foward contracts and forward rate agreeements
 - Interest rate swaps
 - European options (with Black-Scholes)
-- European, Asian, American options with Monte Carlo
-- Ho-Lee and Vasicek interest rate models
+- European, Asian (arithmetic with geometric control variate) and American (Longstaff-Schwartz) options with Monte Carlo
+- Ho-Lee, Hull-White and Vasicek interest rate models
 
 `go get github.com/konimarti/fixedincome`
 
@@ -25,6 +25,7 @@ Financial instruments covered:
 - `bonds-cli` can be used to value a simple straight fixed-coupon bond
 - `swaprate-cli` provides the swap rates for a set of maturities for the given spot-rate curve
 - `option-cli` is pricing plain vanilla European call or put options and calculates all the 'Greeks'
+- `holee` calibrates the Ho-Lee model to a curve and checks the zero bond prices by Monte Carlo (CSV output, plot with `analysis.R`)
 
 ## Nelson-Siegel-Svensson parameters
 

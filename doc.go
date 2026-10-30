@@ -12,7 +12,9 @@
 //   - pkg/cashflow: present value, yield, z-spread, duration, convexity,
 //     DV01 and key rate durations of deterministic cash flows
 //   - pkg/instrument/...: bonds, swaps, forwards/FRAs and European options
-//   - pkg/mc: Monte Carlo engine and interest rate models
+//   - pkg/mc: Monte Carlo engine (European, Asian and American payoffs),
+//     Ho-Lee, Hull-White and Vasicek short rate models, geometric Brownian
+//     motion
 //
 // Conventions: all rates, yields, spreads and volatilities are decimals
 // (0.02 = 2%, 0.0001 = 1bp) and continuously compounded unless stated

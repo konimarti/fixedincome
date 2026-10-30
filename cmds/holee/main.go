@@ -1,180 +1,178 @@
+// Command holee calibrates the Ho-Lee short rate model to a term structure
+// and checks the calibration by Monte Carlo: the simulated zero-coupon bond
+// prices E[exp(-∫_0^t r ds)] are compared with the curve on all grid nodes.
+//
+// Usage:
+//
+//	holee [-f term.json] [-n 1000] [-m 10] [-s 0.02] [-paths 10000] [-seed 0] [-o holee.csv]
+//
+// The CSV (header, one row per grid node t_0 = 0, ..., t_N = T; all rates
+// continuously compounded decimals, discount factors per unit face value)
+// is written to stdout or the file given by -o; the summary is written to
+// stderr. Columns:
+//
+//	t                  time in years
+//	zero_rate          curve zero rate
+//	fwd_rate           curve instantaneous forward rate f(0,t)
+//	theta              Ho-Lee drift θ(t) = f'(0,t) + σ²t (per year)
+//	exp_short_rate     E[r(t)] = f(0,t) + σ²t²/2
+//	discount           curve discount factor Z(0,t)
+//	mc_discount        Monte Carlo estimate of E[exp(-∫_0^t r)]
+//	mc_stderr          standard error of mc_discount
+//	mc_zero_rate       -ln(mc_discount)/t (the short rate at t = 0)
+//
+// Plot with: Rscript analysis.R holee.csv holee.png (the defaults)
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math"
-	"math/rand"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/konimarti/fixedincome/pkg/mc"
+	"github.com/konimarti/fixedincome/pkg/mc/model/holee"
 	"github.com/konimarti/fixedincome/pkg/term"
 )
 
-var (
-	fileFlag      = flag.String("f", "term.json", "json file containing the parameters for the Nelson-Siegel-Svensson term structure")
-	nInput        = flag.Int("n", 1000, "number of time steps")
-	maturityInput = flag.Float64("m", 10.0, "maturity in years for simulation")
-	sigmaInput    = flag.Float64("s", 0.02, "standard deviation of interest rates")
-	seedInput     = flag.Int64("seed", 0, "seed for the random number generator (0: time-based seed)")
-)
-
 func main() {
-	flag.Parse()
+	log.SetFlags(0)
+	log.SetPrefix("holee: ")
+	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
+		log.Fatal(err)
+	}
+}
 
-	// read term structure
-	termData, err := ioutil.ReadFile(*fileFlag)
+func run(args []string, stdout, stderr io.Writer) (err error) {
+	fs := flag.NewFlagSet("holee", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	file := fs.String("f", "term.json", "JSON file with the term structure (see pkg/term)")
+	n := fs.Int("n", 1000, "number of time steps (>= 1)")
+	horizon := fs.Float64("m", 10.0, "horizon (maturity) of the simulation in years")
+	sigma := fs.Float64("s", 0.02, "volatility of the short rate as a decimal per square root of a year (0.01 = 100bp)")
+	paths := fs.Int("paths", 10000, "number of Monte Carlo paths")
+	seed := fs.Uint64("seed", 0, "seed of the random number generator (0: time-based seed, printed)")
+	out := fs.String("o", "-", "output CSV file ('-' for stdout)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("unexpected arguments: %v", fs.Args())
+	}
+
+	data, err := os.ReadFile(*file)
 	if err != nil {
-		log.Fatalf("reading term structure failed: %v", err)
+		return fmt.Errorf("reading term structure: %w", err)
 	}
-
-	ts, _, err := term.Parse(termData)
+	curve, _, err := term.Parse(data)
 	if err != nil {
-		log.Fatalf("parsing term structure from %s failed: %v", *fileFlag, err)
+		return fmt.Errorf("parsing term structure from %s: %w", *file, err)
 	}
-
-	// define parameters
-	n := *nInput
-	T := *maturityInput
-	sigma := *sigmaInput
-	if n < 2 {
-		log.Fatalf("number of time steps must be at least 2, got %d", n)
-	}
-	if !(T > 0.0) {
-		log.Fatalf("maturity must be positive, got %v", T)
-	}
-	dt := T / float64(n)
-
-	// print parameters for info
-	fmt.Println("Parameters")
-	fmt.Println("T    :", T)
-	fmt.Println("n    :", n)
-	fmt.Println("dt   :", dt)
-	fmt.Println("Sigma:", sigma)
-
-	// define numerical grid
-	r := make([]float64, n+2)
-	f := make([]float64, n+1)
-	theta := make([]float64, n)
-	z := make([]float64, n)
-	rHoLee := make([]float64, n)
-	zHoLee := make([]float64, n)
-
-	// calculate current rates, forward rates and thetas on the grid
-	for i := 0; i < n+2; i += 1 {
-		r[i] = ts.ZeroRate(float64(i+1) * dt)
-	}
-	for i := 0; i < n+1; i += 1 {
-		// f[i] = r[i] + float64(i+1)*(r[i+1]-r[i])
-		f[i] = -math.Log(ts.Discount(float64(i+2)*dt)/ts.Discount(float64(i+1)*dt)) / dt
-	}
-	for i := 0; i < n; i += 1 {
-		theta[i] = (f[i+1]-f[i])/dt + sigma*sigma*float64(i+1)*dt
-	}
-
-	// calculate Ho-Lee model spot curve
-	// Z(r,0;T) = exp(A(0;T) - T * r)
-	// where A(0;T) = - Int^T_0 (T-t) theta_t dt + T^3/6 * sigma^2
-	// which is approximated by A(0;T) = Sum^n_{j=1} theta_{j*dt} * (T-j*dt) * dt + T^3 / 6 * sigma^2
-	for i := 0; i < n; i += 1 {
-		t := float64(i+1) * dt
-		// last term of A
-		A := math.Pow(t, 3.0) / 6.0 * math.Pow(sigma, 2.0)
-		// calculate integral part of A
-		for j := 0; j < i; j += 1 {
-			A -= theta[j] * (t - float64(j+1)*dt) * dt
-		}
-		// calculate r_HoLee = -ln(Z_HoLee)/t
-		rHoLee[i] = -A/t + r[0]
-		// calulate zero bonds: Z_HoLee(t) = exp(A - r_0 * t)
-		zHoLee[i] = math.Exp(-rHoLee[i] * t)
-		z[i] = ts.Discount(t)
-	}
-
-	// print out current rates vs. Ho-Lee rates
-	fmt.Println("Time\tZ_term\tZ_HoLee")
-	for t := 0.5; t <= T; t += 0.5 {
-		i := int(math.Round(t/dt)) - 1
-		if i < 0 || i >= n {
-			continue
-		}
-		z := math.Exp(-rHoLee[i] * t)
-		fmt.Printf("%6.2f\t%8.6f\t%8.6f\t%8.6f\t%8.6f\n", t, ts.Discount(t)*100.0, z*100.0, ts.ZeroRate(t)*100.0, 100.0*rHoLee[i])
-	}
-
-	// print out parameters for analysis in R
-	fout, err := os.Create("result.csv")
+	g, err := mc.NewUniformGrid(*horizon, *n)
 	if err != nil {
-		log.Fatal("Unable to read input file: result.csv", err)
+		return err
 	}
-	defer fout.Close()
-	w := csv.NewWriter(fout)
-	output := [][]string{}
-	for i := 0; i < n; i += 1 {
-		output = append(output, []string{
-			fmt.Sprintf("%v", float64(i+1)*dt),
-			fmt.Sprintf("%v", r[i]*100.0),
-			fmt.Sprintf("%v", f[i]*100.0),
-			fmt.Sprintf("%v", theta[i]),
-			fmt.Sprintf("%v", rHoLee[i]*100.0),
-			fmt.Sprintf("%v", z[i]*100.0),
-			fmt.Sprintf("%v", zHoLee[i]*100.0),
-		})
+	model, err := holee.New(curve, *sigma)
+	if err != nil {
+		return err
 	}
-	w.WriteAll(output) // calls Flush internally
+	s := *seed
+	if s == 0 {
+		s = uint64(time.Now().UnixNano())
+	}
 
-	// Monte Carlo pricing with the continuous-time Ho-Lee interest rate model:
-	// Zero Bond
-	seed := *seedInput
-	if seed == 0 {
-		seed = time.Now().UnixNano()
-	}
-	rng := rand.New(rand.NewSource(seed))
-	// simulate up to the maturity T on the grid defined above (theta has n
-	// entries)
-	t := T
-	nsim := 10000
-	payoff := 100.0
-	mc := make([]float64, nsim)
-	rates := make([]float64, n)
-	for j := 0; j < nsim; j += 1 {
-		// simulate interest rates
-		rates[0] = r[0]
-		for i := 0; i < (n - 1); i += 1 {
-			rates[i+1] = rates[i] + theta[i]*dt + sigma*math.Sqrt(dt)*rng.NormFloat64()
+	// open the output before the (possibly long) simulation
+	w := stdout
+	if *out != "-" {
+		f, err := os.Create(*out)
+		if err != nil {
+			return err
 		}
-		// integrate rates: int^N-1_{i=0}
-		rate := 0.0
-		for i := 0; i < (n - 1); i += 1 {
-			rate += rates[i] * dt
+		defer func() {
+			if cerr := f.Close(); err == nil && cerr != nil {
+				err = cerr
+			}
+		}()
+		w = f
+	}
+
+	res, err := mc.PriceMulti(model, mc.ZeroBonds{Grid: g}, g, mc.Options{Paths: *paths, Seed: s})
+	if err != nil {
+		return err
+	}
+
+	// CSV
+	bw := bufio.NewWriter(w)
+	cw := csv.NewWriter(bw)
+	if err := cw.Write([]string{"t", "zero_rate", "fwd_rate", "theta", "exp_short_rate", "discount", "mc_discount", "mc_stderr", "mc_zero_rate"}); err != nil {
+		return err
+	}
+	ff := func(x float64) string { return strconv.FormatFloat(x, 'g', 12, 64) }
+	r0 := model.R0()
+	for i, t := range g.Times {
+		mcZero := r0
+		if t > 0 {
+			mcZero = -math.Log(res[i].Mean) / t
 		}
-
-		// calculate monte carlo expectation value
-		mc[j] = math.Exp(-rate) * payoff
+		if err := cw.Write([]string{
+			ff(t), ff(curve.ZeroRate(t)), ff(term.InstForward(curve, t)), ff(model.Theta(t)),
+			ff(model.Phi(t)), ff(curve.Discount(t)), ff(res[i].Mean), ff(res[i].StdErr), ff(mcZero),
+		}); err != nil {
+			return err
+		}
+	}
+	cw.Flush()
+	if err := cw.Error(); err != nil {
+		return err
+	}
+	if err := bw.Flush(); err != nil {
+		return err
 	}
 
-	estimate := 0.0
-	for j := 0; j < nsim; j += 1 {
-		estimate += mc[j]
+	// summary
+	fmt.Fprintf(stderr, "Ho-Lee model: T=%v, N=%d, dt=%v, σ=%v, r0=%.6f, paths=%d, seed=%d\n",
+		g.T(), g.Steps(), g.Dt(0), *sigma, r0, *paths, s)
+	fmt.Fprintf(stderr, "%8s %12s %12s %10s %8s\n", "t", "100·Z(0,t)", "100·E[Df]", "100·SE", "dev/SE")
+	step := g.Steps() / 10
+	if step < 1 {
+		step = 1
 	}
-	estimate = estimate / float64(nsim)
-
-	// standard error is calculated with the unrounded mean
-	stderror := 0.0
-	for j := 0; j < nsim; j += 1 {
-		stderror += math.Pow(mc[j]-estimate, 2.0)
+	underflow, tinySE, unreliable := false, false, false
+	for i := step; i <= g.Steps(); i += step {
+		z := curve.Discount(g.Times[i])
+		m, se := res[i].Mean, res[i].StdErr
+		dev := "n/a"
+		switch {
+		case !(m > 1e-8*z):
+			// (practically) all paths underflow
+			underflow = true
+		case !(se > 1e-12*m):
+			// deterministic up to rounding: a ratio would be noise
+			tinySE = *sigma > 0
+		default:
+			d := (m - z) / se
+			dev = fmt.Sprintf("%.2f", d)
+			if math.Abs(d) > 1000 {
+				dev = fmt.Sprintf("%.1e", d)
+				unreliable = true
+			}
+		}
+		fmt.Fprintf(stderr, "%8.4g %12.6f %12.6f %10.6f %8s\n", g.Times[i], 100*z, 100*m, 100*se, dev)
 	}
-	stderror = math.Sqrt(stderror/float64(nsim)) / math.Sqrt(float64(nsim))
-	ci0, ci1 := estimate-1.96*stderror, estimate+1.96*stderror
-	estimate = math.Round(1e4*estimate) / 1e4
-	stderror = math.Round(1e4*stderror) / 1e4
-
-	fmt.Println("Monte Carlo Z(", t, ")=", estimate)
-	fmt.Println("[", math.Round(1e4*ci0)/1e4, ",", math.Round(1e4*ci1)/1e4, "]")
-	fmt.Println("Std. error     =", stderror, "(seed:", seed, ")")
-	fmt.Println("Reference   Z(", t, ")=", ts.Discount(t)*100.0)
-
+	if underflow {
+		fmt.Fprintln(stderr, "warning: simulated discount factors underflow (σ too large for the horizon); the estimates are meaningless")
+	}
+	if unreliable {
+		fmt.Fprintln(stderr, "warning: Monte Carlo estimates differ from the curve by more than 1000 standard errors: the discount factors are too skewed (σ too large) for this number of paths")
+	}
+	if tinySE {
+		fmt.Fprintln(stderr, "warning: standard errors are at rounding level (horizon too short for σ); dev/SE not shown")
+	}
+	return nil
 }

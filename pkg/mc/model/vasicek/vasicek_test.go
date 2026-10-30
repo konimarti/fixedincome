@@ -2,7 +2,8 @@ package vasicek_test
 
 import (
 	"math"
-	"math/rand"
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/konimarti/fixedincome/pkg/mc"
@@ -10,61 +11,158 @@ import (
 	"github.com/konimarti/fixedincome/pkg/term"
 )
 
-func TestVasicek(t *testing.T) {
+// seed adds the offset 1000·$MC_SEED_OFFSET to a test seed (to check the
+// robustness of the statistical tests over many seeds).
+func seed(s uint64) uint64 {
+	off, _ := strconv.Atoi(os.Getenv("MC_SEED_OFFSET"))
+	return s + 1000*uint64(off)
+}
 
-	// define term structure for model calibration
-	term := term.NSS{
-		B0:   -0.0043381,
-		B1:   -0.00308942,
-		B2:   0.0483643,
-		B3:   -0.0410991,
-		Tau1: 4.65211,
-		Tau2: 3.33637,
+// maxDev is the tolerance (in standard errors) for checks of all grid
+// nodes at once: the standardised deviations of correlated nodes behave
+// like a Brownian path, and its maximum over up to 1000 nodes exceeds 4
+// far more often than a single node (observed 4.0-4.1 for 2 of 20 seed
+// offsets with N = 1000). 4.5 keeps the family-wise false alarm rate
+// below about 1%.
+const maxDev = 4.5
+
+func mustGrid(t testing.TB, T float64, n int) *mc.Grid {
+	t.Helper()
+	g, err := mc.NewUniformGrid(T, n)
+	if err != nil {
+		t.Fatal(err)
 	}
+	return g
+}
 
-	// define parameters for ho lee model
-	sigma := 0.05000
-	T := 5.0
-	N := 5 * 252
+// veronesi is Eq. 15.28 of Veronesi (2010) (γ > 0).
+func veronesi(v *vasicek.Vasicek, r, tau float64) float64 {
+	B := (1 - math.Exp(-v.Gamma*tau)) / v.Gamma
+	A := (B-tau)*(v.Rbar-v.Sigma*v.Sigma/(2*v.Gamma*v.Gamma)) - v.Sigma*v.Sigma*B*B/(4*v.Gamma)
+	return math.Exp(A - B*r)
+}
 
-	// create Vasicek interest rate model with payoff function for zero bonds
-	model, err := vasicek.New(term, sigma, T, N, func(rates []float64) float64 {
-		dt := T / float64(N)
-		rate := 0.0
-		for i := 0; i < (N - 1); i += 1 {
-			rate += rates[i] * dt
+func TestVasicek_Z(t *testing.T) {
+	v, err := vasicek.New(0.0217, 0.0641, 0.21, 0.0082)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tau := range []float64{0.25, 1, 5, 30} {
+		for _, r := range []float64{-0.01, 0.02, 0.08} {
+			if got, want := v.Z(r, 1, 1+tau), veronesi(v, r, tau); math.Abs(got-want) > 1e-13 {
+				t.Errorf("Z(%v; τ=%v)=%v, Veronesi %v", r, tau, got, want)
+			}
 		}
-		return math.Exp(-rate) * 100.0
-	})
-	if err != nil {
-		t.Error(err)
 	}
+	// γ -> 0: no singularity, limit exp(-rτ + σ²τ³/6)
+	v0 := &vasicek.Vasicek{R0: 0.02, Rbar: 0.05, Gamma: 0, Sigma: 0.01}
+	v1 := &vasicek.Vasicek{R0: 0.02, Rbar: 0.05, Gamma: 1e-14, Sigma: 0.01}
+	for _, tau := range []float64{1, 10, 30} {
+		want := math.Exp(-0.02*tau + 0.01*0.01*tau*tau*tau/6)
+		if got := v0.Z(0.02, 0, tau); math.Abs(got-want) > 1e-14 {
+			t.Errorf("γ=0: Z=%v, want %v", got, want)
+		}
+		if got := v1.Z(0.02, 0, tau); math.Abs(got-want) > 1e-10 || math.IsNaN(got) {
+			t.Errorf("γ=1e-14: Z=%v, want %v", got, want)
+		}
+	}
+}
 
-	// overwriting default rng to make monte carlo more deterministic for testing
-	model.Rng = rand.New(rand.NewSource(99))
+// TestVasicek_MC compares Monte Carlo zero bond prices with the analytic
+// prices for several maturities, volatilities and grids (exact
+// transition: no discretisation bias even for coarse grids).
+func TestVasicek_MC(t *testing.T) {
+	base := uint64(300)
+	for _, sigma := range []float64{0, 0.0082, 0.03} {
+		v, _ := vasicek.New(0.0217, 0.0641, 0.21, sigma)
+		for _, c := range []struct {
+			T float64
+			n int
+		}{{1, 1}, {5, 5}, {10, 200}, {30, 30}} {
+			base++
+			g := mustGrid(t, c.T, c.n)
+			res, err := mc.PriceMulti(v, mc.ZeroBonds{Grid: g}, g, mc.Options{Paths: 20000, Seed: seed(base)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, r := range res {
+				want := v.Z(v.R0, 0, g.Times[i])
+				tol := maxDev * r.StdErr
+				if sigma == 0 {
+					tol = 1e-12
+				}
+				if math.Abs(r.Mean-want) > tol {
+					t.Errorf("σ=%v T=%v N=%d t=%v: %v ± %v, want %v", sigma, c.T, c.n, g.Times[i], r.Mean, r.StdErr, want)
+				}
+			}
+			// mean of the short rate
+			n := c.n
+			r, _ := mc.Price(v, mc.PayoffFunc(func(p *mc.Path) float64 { return p.State[0][n] }), g, mc.Options{Paths: 20000, Seed: seed(base)})
+			if want := v.Mean(c.T); math.Abs(r.Mean-want) > 4*r.StdErr+1e-14 {
+				t.Errorf("E[r(%v)]=%v ± %v, want %v", c.T, r.Mean, r.StdErr, want)
+			}
+		}
+	}
+}
 
-	// run monte carlo simulation
-	engine := mc.New(model, 1e4)
-	err = engine.Run()
-	if err != nil {
-		t.Error(err)
-	}
-	zeroBondEstimate, err := engine.Estimate()
-	if err != nil {
-		t.Error(err)
-	}
-	stderr, err := engine.StdError()
-	if err != nil {
-		t.Error(err)
-	}
-	// compare the Monte Carlo estimate with the analytic zero bond price of
-	// the calibrated Vasicek model; accept deviations within 4 standard
-	// errors. Note: the calibrated model does not reproduce the term
-	// structure exactly (calibration bias of about 2 standard errors w.r.t.
-	// term.Discount(T), to be addressed in WP4).
-	expected := model.Z(model.R0, 0.0, T) * 100.0
-	if math.Abs(zeroBondEstimate-expected) > 4.0*stderr {
-		t.Errorf("vasicek model failed to calculate zero bond; got: %v, expected: %v, standard error: %v (term structure: %v)", zeroBondEstimate, expected, stderr, term.Discount(T)*100.0)
-	}
+// model is a curve generated by a Vasicek model.
+type model struct{ v *vasicek.Vasicek }
 
+func (m model) Discount(t float64) float64 { return m.v.Z(m.v.R0, 0, t) }
+func (m model) ZeroRate(t float64) float64 { return m.v.ZeroRate(t) }
+
+func TestVasicek_Calibrate(t *testing.T) {
+	var mats []float64
+	for t := 0.25; t <= 20; t += 0.25 {
+		mats = append(mats, t)
+	}
+	truth, _ := vasicek.New(0.01, 0.045, 0.35, 0.01)
+	v, cal, err := vasicek.Calibrate(model{truth}, 0.01, mats)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(v.Rbar-truth.Rbar) > 1e-5 || math.Abs(v.Gamma-truth.Gamma) > 1e-4 || cal.RMSE > 1e-7 || v.R0 != truth.R0 {
+		t.Errorf("calibration: %+v %+v, want %+v", v, cal, truth)
+	}
+	// a real curve: the fit is not exact, the RMSE is reported
+	nss := term.NSS{B0: -0.0043381, B1: -0.00308942, B2: 0.0483643, B3: -0.0410991, Tau1: 4.65211, Tau2: 3.33637}
+	v, cal, err = vasicek.Calibrate(nss, 0.005, mats)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("NSS curve: r̄=%.5f γ=%.4f R0=%.5f RMSE=%.2gbp (%d evaluations)", v.Rbar, v.Gamma, v.R0, cal.RMSE*1e4, cal.Evaluations)
+	if !(cal.RMSE > 0) || cal.RMSE > 0.001 || cal.AtBound || v.Gamma < vasicek.MinGamma || v.Gamma > vasicek.MaxGamma {
+		t.Errorf("calibration: %+v %+v", v, cal)
+	}
+	// short maturities only: the best fit has no mean reversion (γ at the
+	// lower bound); the result is still finite and reported as such
+	v, cal, err = vasicek.Calibrate(nss, 0.005, mats[:30])
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("NSS curve up to 7.5y: r̄=%.5g γ=%.4g κ=γr̄=%.5f RMSE=%.2gbp at bound %v", v.Rbar, v.Gamma, v.Gamma*v.Rbar, cal.RMSE*1e4, cal.AtBound)
+	if !cal.AtBound || math.IsNaN(cal.RMSE) || cal.RMSE > 0.001 || math.IsInf(v.Rbar, 0) {
+		t.Errorf("calibration: %+v %+v", v, cal)
+	}
+	for _, c := range []struct {
+		c     term.Curve
+		sigma float64
+		mats  []float64
+	}{{nil, 0.01, mats}, {nss, 0.01, nil}, {nss, -0.01, mats}, {nss, 0.01, []float64{1, -1}}} {
+		if _, _, err := vasicek.Calibrate(c.c, c.sigma, c.mats); err == nil {
+			t.Errorf("Calibrate(%v, %v, %v): expected error", c.c, c.sigma, c.mats)
+		}
+	}
+}
+
+func TestVasicek_Validation(t *testing.T) {
+	for _, p := range [][4]float64{{math.NaN(), 0.05, 0.1, 0.01}, {0.01, 0.05, -0.1, 0.01}, {0.01, 0.05, 0.1, -0.01}, {0.01, math.Inf(1), 0.1, 0.01}} {
+		if _, err := vasicek.New(p[0], p[1], p[2], p[3]); err == nil {
+			t.Errorf("New%v: expected error", p)
+		}
+	}
+	bad := &vasicek.Vasicek{Gamma: -1}
+	if _, err := bad.Discretize(mustGrid(t, 1, 2)); err == nil {
+		t.Error("Discretize: expected error")
+	}
 }
