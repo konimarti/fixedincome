@@ -14,10 +14,7 @@ import (
 func TestStock_EuropeanCall(t *testing.T) {
 
 	// define term structure
-	term := term.Flat{
-		R:      2.0,
-		Spread: 0.0,
-	}
+	term := term.Flat{Rate: 0.02}
 
 	// define parameters for ho lee model
 	S := 110.0
@@ -25,7 +22,7 @@ func TestStock_EuropeanCall(t *testing.T) {
 	T := 2.0
 	N := 2 * 255
 	K := 100.0
-	r := term.Rate(T) / 100.0
+	r := term.ZeroRate(T)
 
 	max := func(a, b float64) float64 {
 		if a > b {
@@ -36,7 +33,7 @@ func TestStock_EuropeanCall(t *testing.T) {
 
 	// create stock model to simulate stock prices
 	model := stock.New(r, S, sigma, T, N, func(stockPrices []float64) float64 {
-		return term.Z(T) * max(stockPrices[N-1]-K, 0.00)
+		return term.Discount(T) * max(stockPrices[N-1]-K, 0.00)
 	})
 
 	// overwriting default rng to make monte carlo more deterministic for testing
@@ -44,13 +41,16 @@ func TestStock_EuropeanCall(t *testing.T) {
 
 	// calculate reference price with Black Scholes
 	refCall := option.European{
-		Type: option.Call, S: S, K: K, T: T, Q: 0.0, Vola: sigma,
+		Type: option.Call, S: S, K: K, T: T, Q: 0.0, Vol: sigma,
 	}
-	refCallValue := refCall.PresentValue(&term)
+	refCallValue, err := refCall.Price(term)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// perform monte carlo simulation with ho lee model
 	engine := mc.New(model, 1e5)
-	err := engine.Run()
+	err = engine.Run()
 	if err != nil {
 		t.Error(err)
 	}

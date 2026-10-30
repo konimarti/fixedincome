@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/konimarti/fixedincome/pkg/instrument/option"
 	"github.com/konimarti/fixedincome/pkg/term"
@@ -24,29 +23,35 @@ func main() {
 	flag.Parse()
 
 	// parse option type
-	var optionType int
-	switch strings.ToUpper(*optionT) {
-	case "CALL":
-		optionType = option.Call
-	case "PUT":
-		optionType = option.Put
-	default:
-		fmt.Fprintf(os.Stderr, "error: invalid option type %q: must be 'call' or 'put'\n", *optionT)
+	optionType, err := option.ParseType(*optionT)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(2)
 	}
 
-	// create European option
+	// create European option (dividend yield flag in percent)
 	euOption := option.European{
 		Type: optionType,
 		S:    *stockPrice,
 		K:    *strikePrice,
 		T:    *maturity,
-		Q:    *divyield,
-		Vola: *vola,
+		Q:    *divyield / 100.0,
+		Vol:  *vola,
 	}
 
-	// create flat yield curve
-	term := term.Flat{R: *discountRate, Spread: 0.0}
+	// create flat yield curve (rate flag in percent)
+	term := term.Flat{Rate: *discountRate / 100.0}
+
+	price, err := euOption.Price(term)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(2)
+	}
+	greeks, err := euOption.Greeks(term)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(2)
+	}
 
 	// print option price and the 'Greeks'
 	if euOption.Type == option.Call {
@@ -54,11 +59,11 @@ func main() {
 	} else {
 		fmt.Println("Put Option")
 	}
-	fmt.Printf("Price: %9.4f\n", euOption.PresentValue(&term))
+	fmt.Printf("Price: %9.4f\n", price)
 	fmt.Println("\nThe 'Greeks'")
-	fmt.Printf("Delta: %9.4f\n", euOption.Delta(&term))
-	fmt.Printf("Gamma: %9.4f\n", euOption.Gamma(&term))
-	fmt.Printf("Rho  : %9.4f\n", euOption.Rho(&term))
-	fmt.Printf("Vega : %9.4f\n", euOption.Vega(&term))
+	fmt.Printf("Delta: %9.4f\n", greeks.Delta)
+	fmt.Printf("Gamma: %9.4f\n", greeks.Gamma)
+	fmt.Printf("Rho  : %9.4f\n", greeks.Rho)
+	fmt.Printf("Vega : %9.4f\n", greeks.Vega)
 
 }

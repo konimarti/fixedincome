@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("reading term structure failed: %v", err)
 	}
 
-	ts, err := term.Parse(termData)
+	ts, _, err := term.Parse(termData)
 	if err != nil {
 		log.Fatalf("parsing term structure from %s failed: %v", *fileFlag, err)
 	}
@@ -65,11 +65,11 @@ func main() {
 
 	// calculate current rates, forward rates and thetas on the grid
 	for i := 0; i < n+2; i += 1 {
-		r[i] = ts.Rate(float64(i+1)*dt) / 100.0
+		r[i] = ts.ZeroRate(float64(i+1) * dt)
 	}
 	for i := 0; i < n+1; i += 1 {
 		// f[i] = r[i] + float64(i+1)*(r[i+1]-r[i])
-		f[i] = -math.Log(ts.Z(float64(i+2)*dt)/ts.Z(float64(i+1)*dt)) / dt
+		f[i] = -math.Log(ts.Discount(float64(i+2)*dt)/ts.Discount(float64(i+1)*dt)) / dt
 	}
 	for i := 0; i < n; i += 1 {
 		theta[i] = (f[i+1]-f[i])/dt + sigma*sigma*float64(i+1)*dt
@@ -91,7 +91,7 @@ func main() {
 		rHoLee[i] = -A/t + r[0]
 		// calulate zero bonds: Z_HoLee(t) = exp(A - r_0 * t)
 		zHoLee[i] = math.Exp(-rHoLee[i] * t)
-		z[i] = ts.Z(t)
+		z[i] = ts.Discount(t)
 	}
 
 	// print out current rates vs. Ho-Lee rates
@@ -102,7 +102,7 @@ func main() {
 			continue
 		}
 		z := math.Exp(-rHoLee[i] * t)
-		fmt.Printf("%6.2f\t%8.6f\t%8.6f\t%8.6f\t%8.6f\n", t, ts.Z(t)*100.0, z*100.0, ts.Rate(t), 100.0*rHoLee[i])
+		fmt.Printf("%6.2f\t%8.6f\t%8.6f\t%8.6f\t%8.6f\n", t, ts.Discount(t)*100.0, z*100.0, ts.ZeroRate(t)*100.0, 100.0*rHoLee[i])
 	}
 
 	// print out parameters for analysis in R
@@ -175,6 +175,6 @@ func main() {
 	fmt.Println("Monte Carlo Z(", t, ")=", estimate)
 	fmt.Println("[", math.Round(1e4*ci0)/1e4, ",", math.Round(1e4*ci1)/1e4, "]")
 	fmt.Println("Std. error     =", stderror, "(seed:", seed, ")")
-	fmt.Println("Reference   Z(", t, ")=", ts.Z(t)*100.0)
+	fmt.Println("Reference   Z(", t, ")=", ts.Discount(t)*100.0)
 
 }

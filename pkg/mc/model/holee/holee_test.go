@@ -13,14 +13,13 @@ import (
 func TestHoLee(t *testing.T) {
 
 	// define term structure for model calibration
-	term := term.NelsonSiegelSvensson{
-		B0:     -0.43381,
-		B1:     -0.308942,
-		B2:     4.83643,
-		B3:     -4.10991,
-		T1:     4.65211,
-		T2:     3.33637,
-		Spread: 0.0,
+	term := term.NSS{
+		B0:   -0.0043381,
+		B1:   -0.00308942,
+		B2:   0.0483643,
+		B3:   -0.0410991,
+		Tau1: 4.65211,
+		Tau2: 3.33637,
 	}
 
 	// define parameters for ho lee model
@@ -29,7 +28,7 @@ func TestHoLee(t *testing.T) {
 	N := 5 * 255
 
 	// create ho lee interest rate model with payoff function for zero bonds
-	model, err := holee.New(&term, sigma, T, N, func(rates []float64) float64 {
+	model, err := holee.New(term, sigma, T, N, func(rates []float64) float64 {
 		dt := T / float64(N)
 		rate := 0.0
 		for i := 0; i < (N - 1); i += 1 {
@@ -59,8 +58,8 @@ func TestHoLee(t *testing.T) {
 		t.Error(err)
 	}
 	// accept deviations within 4 standard errors of the Monte Carlo estimate
-	if math.Abs(zeroBondEstimate-term.Z(T)*100.0) > 4.0*stderr {
-		t.Errorf("ho lee model failed to calculate zero bond; got: %v, expected: %v, standard error: %v", zeroBondEstimate, term.Z(T)*100.0, stderr)
+	if math.Abs(zeroBondEstimate-term.Discount(T)*100.0) > 4.0*stderr {
+		t.Errorf("ho lee model failed to calculate zero bond; got: %v, expected: %v, standard error: %v", zeroBondEstimate, term.Discount(T)*100.0, stderr)
 	}
 
 }

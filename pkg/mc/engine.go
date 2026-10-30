@@ -5,6 +5,7 @@ import (
 	"math"
 )
 
+// Status values of the Monte Carlo engine.
 const (
 	IncompleteSetup = iota
 	Initialized

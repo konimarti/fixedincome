@@ -8,7 +8,8 @@ import (
 
 // Stock implements the log-normal simulation for the Monte Carlo engine
 type Stock struct {
-	// R is annual return until maturity
+	// R is the continuously compounded (risk-neutral) return until
+	// maturity, decimal
 	R float64
 	// S0 is the stock value at the time 0
 	S0 float64

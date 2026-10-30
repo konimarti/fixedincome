@@ -29,7 +29,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ts, err := term.Parse(termData)
+	ts, _, err := term.Parse(termData)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: parsing term structure from %s failed: %v\n", *fileFlag, err)
 		os.Exit(1)
@@ -48,14 +48,14 @@ func main() {
 
 		fmt.Println("Discount Factors and Forward Rate")
 		fmt.Println("")
-		fmt.Printf("Z(0,%4.2f)\t\t%3.4f\n", t1, ts.Z(t1))
-		Ffac := ts.Z(t1+m) / ts.Z(t1)
+		fmt.Printf("Z(0,%4.2f)\t\t%3.4f\n", t1, ts.Discount(t1))
+		Ffac := ts.Discount(t1+m) / ts.Discount(t1)
 		fmt.Printf("F(0,%4.2f,%4.2f)\t\t%3.4f\n", t1, t1+m, Ffac)
-		fmt.Printf("Z(0,%4.2f)\t\t%3.4f\n", t1+m, ts.Z(t1+m))
+		fmt.Printf("Z(0,%4.2f)\t\t%3.4f\n", t1+m, ts.Discount(t1+m))
 		fmt.Println("------------------------------")
-		fmt.Printf("r(0,%4.2f)\t\t%3.4f%%\n", t1, ts.Rate(t1))
+		fmt.Printf("r(0,%4.2f)\t\t%3.4f%%\n", t1, ts.ZeroRate(t1)*100.0)
 		fmt.Printf("f(0,%4.2f,%4.2f)\t\t%3.4f%%\n", t1, t1+m, -math.Log(Ffac)/m*100.0)
-		fmt.Printf("r(0,%4.2f)\t\t%3.4f%%\n", t1+m, ts.Rate(t1+m))
+		fmt.Printf("r(0,%4.2f)\t\t%3.4f%%\n", t1+m, ts.ZeroRate(t1+m)*100.0)
 		fmt.Println("------------------------------")
 
 	}
@@ -67,8 +67,8 @@ func main() {
 	for i := 1; i <= 10*12; i++ {
 		t := float64(i) * 1.0 / 12.0
 
-		z := ts.Z(t)
-		f := ts.Z(t+m) / z
+		z := ts.Discount(t)
+		f := ts.Discount(t+m) / z
 
 		spot := -math.Log(z) / t * 100.0
 		fwd := -math.Log(f) / m * 100.0

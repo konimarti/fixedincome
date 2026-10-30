@@ -3,131 +3,232 @@ package term
 import (
 	"fmt"
 	"math"
-	"sort"
-
-	"github.com/cnkei/gospline"
 )
 
-// Spline represents the term structure as cubic splines
+// Spline is a term structure given by a natural cubic spline through the
+// log-discount factors y(t) = -ln Z(t) = r(t)*t at a set of knots. The spline
+// is always anchored at (t, Z) = (0, 1).
+//
+// Interpolating the log-discount factors (instead of the discount factors)
+// guarantees positive discount factors and a continuous, smooth
+// instantaneous forward rate f(t) = y'(t). Beyond the last knot the
+// instantaneous forward rate is extrapolated flat at its value at the last
+// knot, f(t) = f(t_n), which continues the spline with continuous first and
+// second derivatives (natural boundary condition y”(t_n) = 0). For t < 0 the
+// log-discount factor is extrapolated linearly with the forward rate at 0.
+//
+// A Spline is immutable and safe for concurrent use; Discount and ZeroRate do
+// not allocate. Construct it with NewSpline; the methods of a zero-value or
+// nil Spline return NaN.
 type Spline struct {
-	spline          gospline.Spline `json:"-"`
-	Maturities      []float64       `json:"maturities"`
-	DiscountFactors []float64       `json:"discountfactors"`
-	Spread          float64         `json:"spread"`
+	// x are the knots including the anchor at 0; y the log-discount factors
+	x, y []float64
+	// cubic coefficients per segment i on [x[i], x[i+1]]:
+	// y(t) = y[i] + b[i]*dt + c[i]*dt^2 + d[i]*dt^3 with dt = t - x[i]
+	b, c, d []float64
+	// fn is the instantaneous forward at the last knot
+	fn float64
+	// anchored is true if the caller supplied the knot at t=0
+	anchored bool
+	// z are the discount factors as supplied by the caller
+	z []float64
 }
 
-// GetSpread returns the spread in bps
-func (s *Spline) GetSpread() float64 {
-	return s.Spread
-}
-
-// SetSpread sets the spread in bps
-func (s *Spline) SetSpread(spread float64) Structure {
-	s.Spread = spread
-	return s
-}
-
-// Rate returns the continuously compounded spot rate in percent.
-// Below the first maturity the zero rate is extrapolated flat, i.e.
-// Rate(t) = Rate(t0) for t < t0 (this includes t <= 0). If the first maturity
-// is not positive, the short-rate limit for t <= 0 is approximated at a small
-// maturity (consistent with the Nelson-Siegel-Svensson model).
-func (s *Spline) Rate(t float64) float64 {
-	if s.spline == nil {
-		panic("term structure is not properly initialized")
+// NewSpline returns a cubic spline term structure through the discount
+// factors z at the maturities t (in years). The maturities must be finite,
+// non-negative and strictly increasing with a spacing of at least
+// MinKnotSpacing (including the anchor at 0); the discount factors must be finite
+// and positive. A knot at t = 0 is optional and must have a discount factor
+// of 1; if it is absent, the anchor (0, 1) is inserted. At least one knot is
+// required. The input slices are copied.
+func NewSpline(t, z []float64) (*Spline, error) {
+	if len(t) != len(z) {
+		return nil, fmt.Errorf("spline: number of maturities (%d) and discount factors (%d) differ", len(t), len(z))
 	}
-	if t0 := s.Maturities[0]; t0 > 0.0 && t < t0 {
-		return s.Rate(t0)
+	if len(t) == 0 {
+		return nil, fmt.Errorf("spline: at least one knot is required")
 	}
-	if t <= 0.0 {
-		t = 1e-7
+	s := &Spline{}
+	n := len(t)
+	if t[0] != 0 {
+		n++
+	} else {
+		s.anchored = true
 	}
-	return -math.Log(s.Z(t)) / t * 100.0
-}
-
-// Z returns the discount factor for the given maturity t.
-// Below the first maturity t0 > 0, the discount factor is consistent with a
-// flat extrapolation of the zero rate: Z(t) = exp(-Rate(t0) * t).
-func (s *Spline) Z(t float64) float64 {
-	if s.spline == nil {
-		panic("term structure is not properly initialized")
+	s.x = make([]float64, 0, n)
+	s.y = make([]float64, 0, n)
+	if !s.anchored {
+		s.x = append(s.x, 0)
+		s.y = append(s.y, 0)
 	}
-	if t0 := s.Maturities[0]; t0 > 0.0 && t < t0 {
-		return math.Exp(-s.Rate(t0) * 0.01 * t)
-	}
-	return s.spline.At(t) * math.Exp(-s.Spread*0.0001*t)
-}
-
-// Init sorts the maturities in increasing order and fits the cubic spline.
-// It returns an error if the maturities and discount factors do not have the
-// same length, if there are less than two points, if the maturities are not
-// distinct (strictly increasing after sorting) or if a discount factor is not
-// positive.
-func (s *Spline) Init() error {
-	if len(s.Maturities) != len(s.DiscountFactors) {
-		return fmt.Errorf("spline: number of maturities (%d) and discount factors (%d) differ",
-			len(s.Maturities), len(s.DiscountFactors))
-	}
-	if len(s.Maturities) < 2 {
-		return fmt.Errorf("spline: at least two points are required, got %d", len(s.Maturities))
-	}
-	for i, t := range s.Maturities {
-		if math.IsNaN(t) || math.IsInf(t, 0) {
-			return fmt.Errorf("spline: invalid maturity %v at index %d", t, i)
+	for i := range t {
+		ti, zi := t[i], z[i]
+		if math.IsNaN(ti) || math.IsInf(ti, 0) || ti < 0 {
+			return nil, fmt.Errorf("spline: invalid maturity %v at index %d: must be finite and non-negative", ti, i)
 		}
-		if z := s.DiscountFactors[i]; !(z > 0.0) || math.IsInf(z, 0) {
-			return fmt.Errorf("spline: discount factor %v for maturity %v is not positive", z, t)
+		if !(zi > 0) || math.IsInf(zi, 0) {
+			return nil, fmt.Errorf("spline: invalid discount factor %v for maturity %v: must be finite and positive", zi, ti)
+		}
+		if ti == 0 && math.Abs(zi-1) > 1e-12 {
+			return nil, fmt.Errorf("spline: discount factor at maturity 0 must be 1, got %v", zi)
+		}
+		if i > 0 && !(ti > t[i-1]) {
+			return nil, fmt.Errorf("spline: maturities are not strictly increasing at index %d (%v after %v)", i, ti, t[i-1])
+		}
+		prev := 0.0
+		if i > 0 {
+			prev = t[i-1]
+		}
+		if ti > 0 && ti-prev < MinKnotSpacing {
+			return nil, fmt.Errorf("spline: knots %v and %v are closer than %v years", prev, ti, MinKnotSpacing)
+		}
+		if ti == 0 {
+			s.x = append(s.x, 0)
+			s.y = append(s.y, 0)
+			continue
+		}
+		s.x = append(s.x, ti)
+		s.y = append(s.y, -math.Log(zi))
+	}
+	s.z = append([]float64(nil), z...)
+	s.fit()
+	return s, nil
+}
+
+// MinKnotSpacing is the minimum distance between knots in years.
+const MinKnotSpacing = 1e-8
+
+// ok reports whether the spline was constructed by NewSpline.
+func (s *Spline) ok() bool {
+	return s != nil && len(s.b) > 0
+}
+
+// fit computes the coefficients of the natural cubic spline.
+func (s *Spline) fit() {
+	n := len(s.x) - 1 // number of segments (>= 1)
+	h := make([]float64, n)
+	for i := 0; i < n; i++ {
+		h[i] = s.x[i+1] - s.x[i]
+	}
+	// second derivatives m with m[0] = m[n] = 0 (tridiagonal system,
+	// Thomas algorithm)
+	m := make([]float64, n+1)
+	if n > 1 {
+		diag := make([]float64, n+1)
+		rhs := make([]float64, n+1)
+		for i := 1; i < n; i++ {
+			diag[i] = 2 * (h[i-1] + h[i])
+			rhs[i] = 6 * ((s.y[i+1]-s.y[i])/h[i] - (s.y[i]-s.y[i-1])/h[i-1])
+		}
+		// forward elimination
+		for i := 2; i < n; i++ {
+			w := h[i-1] / diag[i-1]
+			diag[i] -= w * h[i-1]
+			rhs[i] -= w * rhs[i-1]
+		}
+		// back substitution
+		for i := n - 1; i >= 1; i-- {
+			m[i] = (rhs[i] - h[i]*m[i+1]) / diag[i]
 		}
 	}
-	sort.Sort(s)
-	for i := 1; i < len(s.Maturities); i++ {
-		if !(s.Maturities[i] > s.Maturities[i-1]) {
-			return fmt.Errorf("spline: maturities are not strictly increasing (duplicate maturity %v)", s.Maturities[i])
+	s.b = make([]float64, n)
+	s.c = make([]float64, n)
+	s.d = make([]float64, n)
+	for i := 0; i < n; i++ {
+		s.b[i] = (s.y[i+1]-s.y[i])/h[i] - h[i]*(2*m[i]+m[i+1])/6
+		s.c[i] = m[i] / 2
+		s.d[i] = (m[i+1] - m[i]) / (6 * h[i])
+	}
+	last := n - 1
+	s.fn = s.b[last] + 2*s.c[last]*h[last] + 3*s.d[last]*h[last]*h[last]
+}
+
+// segment returns the index i of the segment [x[i], x[i+1]] containing t,
+// for 0 <= t <= x[n] (binary search).
+func (s *Spline) segment(t float64) int {
+	lo, hi := 0, len(s.x)-2
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if s.x[mid] <= t {
+			lo = mid
+		} else {
+			hi = mid - 1
 		}
 	}
-	s.spline = gospline.NewCubicSpline(s.Maturities, s.DiscountFactors)
-	return nil
+	return lo
 }
 
-func (s *Spline) Len() int {
-	return len(s.Maturities)
-}
-
-func (s *Spline) Less(i, j int) bool {
-	return s.Maturities[i] < s.Maturities[j]
-}
-
-func (s *Spline) Swap(i, j int) {
-	swap(s.Maturities, i, j)
-	swap(s.DiscountFactors, i, j)
-}
-
-func swap(arr []float64, i, j int) {
-	tmp := arr[j]
-	arr[j] = arr[i]
-	arr[i] = tmp
-}
-
-// NewSpline returns a new spline term structure where t are the maturities
-// with the corresponding discount factors z. The input slices are copied and
-// sorted by maturity. NewSpline panics if the input is invalid (see Init);
-// use Spline.Init directly to handle the error instead.
-func NewSpline(t, z []float64, spread float64) Structure {
-	maturities := make([]float64, len(t))
-	copy(maturities, t)
-
-	factors := make([]float64, len(z))
-	copy(factors, z)
-
-	spline := Spline{
-		Maturities:      maturities,
-		DiscountFactors: factors,
-		Spread:          spread,
+// logDiscount returns y(t) = -ln Z(t).
+func (s *Spline) logDiscount(t float64) float64 {
+	if !s.ok() {
+		return math.NaN()
 	}
-
-	if err := spline.Init(); err != nil {
-		panic(err)
+	last := len(s.x) - 1
+	switch {
+	case t <= 0:
+		return s.b[0] * t
+	case t >= s.x[last]:
+		return s.y[last] + s.fn*(t-s.x[last])
 	}
+	i := s.segment(t)
+	dt := t - s.x[i]
+	return s.y[i] + dt*(s.b[i]+dt*(s.c[i]+dt*s.d[i]))
+}
 
-	return &spline
+// Discount returns the discount factor Z(0,t) = exp(-y(t)).
+func (s *Spline) Discount(t float64) float64 {
+	return math.Exp(-s.logDiscount(t))
+}
+
+// ZeroRate returns the continuously compounded zero rate y(t)/t (decimal);
+// for t <= 0 the limit t -> 0, i.e. the instantaneous forward rate at 0.
+func (s *Spline) ZeroRate(t float64) float64 {
+	if !s.ok() {
+		return math.NaN()
+	}
+	if t <= 0 {
+		return s.b[0]
+	}
+	return s.logDiscount(t) / t
+}
+
+// InstForward returns the analytic instantaneous forward rate y'(t)
+// (decimal); flat beyond the last knot and for t < 0.
+func (s *Spline) InstForward(t float64) float64 {
+	if !s.ok() {
+		return math.NaN()
+	}
+	last := len(s.x) - 1
+	switch {
+	case t <= 0:
+		return s.b[0]
+	case t >= s.x[last]:
+		return s.fn
+	}
+	i := s.segment(t)
+	dt := t - s.x[i]
+	return s.b[i] + dt*(2*s.c[i]+3*dt*s.d[i])
+}
+
+// Knots returns a copy of the knot maturities (in years) as passed to
+// NewSpline, i.e. without the implicit anchor at t = 0 unless it was given
+// explicitly.
+func (s *Spline) Knots() []float64 {
+	if !s.ok() {
+		return nil
+	}
+	start := 1
+	if s.anchored {
+		start = 0
+	}
+	return append([]float64(nil), s.x[start:]...)
+}
+
+// DiscountFactors returns the discount factors at the knots returned by
+// Knots.
+func (s *Spline) DiscountFactors() []float64 {
+	if !s.ok() {
+		return nil
+	}
+	return append([]float64(nil), s.z...)
 }

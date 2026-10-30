@@ -7,7 +7,6 @@ import (
 
 	"github.com/konimarti/fixedincome/pkg/instrument/bond"
 	"github.com/konimarti/fixedincome/pkg/maturity"
-	"github.com/konimarti/fixedincome/pkg/rate"
 	"github.com/konimarti/fixedincome/pkg/term"
 )
 
@@ -41,8 +40,33 @@ type InverseFloater struct {
 	Pf bond.Floating
 }
 
-func (f *InverseFloater) PresentValue(ts term.Structure) float64 {
-	return f.Weights[0]*f.Pz.PresentValue(ts) + f.Weights[1]*f.Pc.PresentValue(ts) + f.Weights[2]*f.Pf.PresentValue(ts)
+// PresentValue returns the value of the inverse floater; ts is used as the
+// discount and forecast curve
+func (f *InverseFloater) PresentValue(settle time.Time, ts term.Curve) float64 {
+	return f.Weights[0]*must(f.Pz.DirtyPrice(settle, ts)) +
+		f.Weights[1]*must(f.Pc.DirtyPrice(settle, ts)) +
+		f.Weights[2]*must(f.Pf.PresentValue(settle, ts, ts))
+}
+
+func mustStraight(b bond.Straight, err error) bond.Straight {
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+func mustFloating(f bond.Floating, err error) bond.Floating {
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
+
+func must(v float64, err error) float64 {
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
 
 func main() {
@@ -54,51 +78,42 @@ func main() {
 	}
 
 	// define schedule
+	settle := time.Date(1993, 12, 31, 0, 0, 0, 0, time.UTC)
 	schedule := maturity.Schedule{
-		Settlement: time.Date(1993, 12, 31, 0, 0, 0, 0, time.UTC),
-		Maturity:   time.Date(1996, 12, 31, 0, 0, 0, 0, time.UTC),
-		Frequency:  1,
-		Basis:      "30E360",
+		Maturity:  time.Date(1996, 12, 31, 0, 0, 0, 0, time.UTC),
+		Frequency: maturity.Annual,
+		DayCount:  maturity.Thirty360E,
 	}
 
 	// define inverse floater with the correct weights
 	invfloater := InverseFloater{
 		Weights: [3]float64{1.0, 1.0, -1.0},
-		Pz: bond.Straight{
-			Schedule:   schedule,
-			Coupon:     0.0,
-			Redemption: 100.0,
-		},
-		Pc: bond.Straight{
-			Schedule:   schedule,
-			Coupon:     15.0,
-			Redemption: 100.0,
-		},
-		Pf: bond.Floating{
-			Schedule:   schedule,
-			Rate:       rate.Annual(ts.Rate(1.0), 1),
-			Redemption: 100.0,
-		},
+		Pz:      mustStraight(bond.NewStraight(schedule, 0.0)),
+		Pc:      mustStraight(bond.NewStraight(schedule, 0.15)),
+		// the coupons are reset annually at the annually compounded rate,
+		// which is projected from the curve (settlement on a reset date,
+		// no current fixing)
+		Pf: mustFloating(bond.NewFloating(schedule, 0.0)),
 	}
 
-	fmt.Printf("Pz=%8.4f\n", invfloater.Pz.PresentValue(ts))
-	fmt.Printf("Pc=%8.4f\n", invfloater.Pc.PresentValue(ts))
-	fmt.Printf("Pf=%8.4f\n\n", invfloater.Pf.PresentValue(ts))
+	fmt.Printf("Pz=%8.4f\n", must(invfloater.Pz.DirtyPrice(settle, ts)))
+	fmt.Printf("Pc=%8.4f\n", must(invfloater.Pc.DirtyPrice(settle, ts)))
+	fmt.Printf("Pf=%8.4f\n\n", must(invfloater.Pf.PresentValue(settle, ts, ts)))
 	fmt.Printf("Value of inverse floater (t=0):")
-	fmt.Printf("%10.4f\n", invfloater.PresentValue(ts))
+	fmt.Printf("%10.4f\n", invfloater.PresentValue(settle, ts))
 	fmt.Printf("Exepected value from Veronesi :%10.4f\n", 116.28)
 	fmt.Println("")
 
 	// create the leveraged inverse floater
 	levinvfloater := invfloater
 	levinvfloater.Weights = [3]float64{2.0, 1.0, -2.0}
-	levinvfloater.Pc.Coupon = 25.0
+	levinvfloater.Pc.Coupon = 0.25
 
-	fmt.Printf("Pz=%8.4f\n", levinvfloater.Pz.PresentValue(ts))
-	fmt.Printf("Pc=%8.4f\n", levinvfloater.Pc.PresentValue(ts))
-	fmt.Printf("Pf=%8.4f\n\n", levinvfloater.Pf.PresentValue(ts))
+	fmt.Printf("Pz=%8.4f\n", must(levinvfloater.Pz.DirtyPrice(settle, ts)))
+	fmt.Printf("Pc=%8.4f\n", must(levinvfloater.Pc.DirtyPrice(settle, ts)))
+	fmt.Printf("Pf=%8.4f\n\n", must(levinvfloater.Pf.PresentValue(settle, ts, ts)))
 	fmt.Printf("Value of leveraged inverse floater (t=0):")
-	fmt.Printf("%10.4f\n", levinvfloater.PresentValue(ts))
+	fmt.Printf("%10.4f\n", levinvfloater.PresentValue(settle, ts))
 	fmt.Printf("Exepected value from Veronesi           :%10.4f\n", 131.32)
 	fmt.Println("")
 
@@ -111,15 +126,16 @@ type bootstrap struct {
 	z []float64
 }
 
-func (b *bootstrap) SetSpread(t float64) term.Structure {
-	return b
+// ZeroRate returns the continuously compounded zero rate (decimal)
+func (b *bootstrap) ZeroRate(t float64) float64 {
+	return -math.Log(b.Discount(t)) / t
 }
 
-func (b *bootstrap) Rate(t float64) float64 {
-	return -math.Log(b.Z(t)) / t * 100.0
-}
-
-func (b *bootstrap) Z(t float64) float64 {
+// Discount returns the bootstrapped discount factor (1 for t close to 0)
+func (b *bootstrap) Discount(t float64) float64 {
+	if math.Abs(t) < 0.05 {
+		return 1.0
+	}
 	for i, m := range b.t {
 		if math.Abs(m-t) < 0.05 {
 			return b.z[i]

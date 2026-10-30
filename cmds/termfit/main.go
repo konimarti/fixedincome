@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -14,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/konimarti/fixedincome"
+	"github.com/konimarti/fixedincome/pkg/cashflow"
 	"github.com/konimarti/fixedincome/pkg/instrument/bond"
 	"github.com/konimarti/fixedincome/pkg/maturity"
 	"github.com/konimarti/fixedincome/pkg/rate"
@@ -28,11 +27,26 @@ const DateFmt = "2006-01-02"
 var dateFormats = []string{DateFmt, "02.01.2006"}
 
 var (
-	bonds  []bond.Straight
-	quotes []float64 // quoted "clean" prices
-	prices []float64 // "dirty" prices
-	yields []float64 // yields of the "dirty" prices
+	bonds   []bond.Straight
+	flows   [][]cashflow.CashFlow // cash flows of the bonds after the settlement date
+	accrued []float64             // accrued interest of the bonds
+	quotes  []float64             // quoted "clean" prices
+	prices  []float64             // "dirty" prices
+	yields  []float64             // yields of the "dirty" prices (cc, in percent)
 )
+
+// yieldPercent returns the continuously compounded yield in percent (the
+// unit of the objective functions)
+func yieldPercent(dirty float64, cfs []cashflow.CashFlow) (float64, error) {
+	y, err := cashflow.YieldCC(dirty, cfs)
+	return y * 100.0, err
+}
+
+// nssFromParams returns the NSS curve for the optimization parameters
+// (betas in percent, decay parameters in years)
+func nssFromParams(x []float64) term.NSS {
+	return term.NSS{B0: x[0] / 100, B1: x[1] / 100, B2: x[2] / 100, B3: x[3] / 100, Tau1: x[4], Tau2: x[5]}
+}
 
 var (
 	file       = flag.String("file", "bonddata.csv", fmt.Sprintf("CSV file for bond data with the following fields: maturity date (format: %s or DD.MM.YYYY), coupon, price; an optional header row is skipped", DateFmt))
@@ -70,13 +84,17 @@ func main() {
 		log.Println(err)
 	}
 
-	ts, err := term.Parse(termData)
+	ts, _, err := term.Parse(termData)
 	if err != nil {
 		log.Printf("no valid starting term structure in %s (%v), using default parameters", *fileFlag, err)
 	}
 
 	// convert annual O/N rate to a continuously compounded rate
-	onCC := rate.Continuous(*onRate, 360)
+	onCC, err := rate.ToContinuous(*onRate/100.0, 360)
+	if err != nil {
+		log.Fatal(err)
+	}
+	onCC *= 100.0 // percent
 
 	// if an overnight rate is given, use a constraint in the optimization
 	// procedure
@@ -88,9 +106,12 @@ func main() {
 	// initial term structure parameters for the optimization procedure
 	x := []float64{-0.421199, -0.32659, 5.02375, -4.15252, 4.7229, 3.36644}
 
-	if nss, ok := ts.(*term.NelsonSiegelSvensson); ok {
-		log.Println("using model from file")
-		x[0], x[1], x[2], x[3], x[4], x[5] = nss.B0, nss.B1, nss.B2, nss.B3, nss.T1, nss.T2
+	if ts != nil {
+		base, _ := term.Spread(ts)
+		if nss, ok := base.(term.NSS); ok {
+			log.Println("using model from file")
+			x[0], x[1], x[2], x[3], x[4], x[5] = nss.B0*100, nss.B1*100, nss.B2*100, nss.B3*100, nss.Tau1, nss.Tau2
+		}
 	}
 
 	if conOpt {
@@ -128,22 +149,30 @@ func main() {
 			continue
 		}
 
-		bnd := bond.Straight{
-			Schedule: maturity.Schedule{
-				Settlement: lastTradingDay,
-				Maturity:   maturityDay,
-				Frequency:  1,
-				Basis:      "30E360",
-			},
-			Coupon:     coupon,
-			Redemption: 100.0,
+		bnd, err := bond.NewStraight(maturity.Schedule{
+			Maturity:  maturityDay,
+			Frequency: maturity.Annual,
+			DayCount:  maturity.Thirty360E,
+		}, coupon/100.0)
+		if err != nil {
+			log.Fatalf("%s: row %d: %v", filePath, nr+1, err)
+		}
+		cfs, err := bnd.CashFlows(lastTradingDay)
+		if err != nil {
+			log.Fatalf("%s: row %d: %v", filePath, nr+1, err)
+		}
+		acc, err := bnd.Accrued(lastTradingDay)
+		if err != nil {
+			log.Fatalf("%s: row %d: %v", filePath, nr+1, err)
 		}
 		bonds = append(bonds, bnd)
+		flows = append(flows, cfs)
+		accrued = append(accrued, acc)
 		quotes = append(quotes, price)
 		// reminder: prices are "dirty"
-		dirty := price + bnd.Accrued()
+		dirty := price + acc
 		prices = append(prices, dirty)
-		yield, err := fixedincome.Irr(dirty, &bnd)
+		yield, err := yieldPercent(dirty, cfs)
 		if err != nil {
 			log.Println(err)
 			yield = math.NaN()
@@ -164,10 +193,7 @@ func main() {
 	// *******************************************************************
 	fun := func(xf []float64) float64 {
 
-		ts := &term.NelsonSiegelSvensson{
-			B0: xf[0], B1: xf[1], B2: xf[2], B3: xf[3], T1: xf[4], T2: xf[5],
-			Spread: 0.0,
-		}
+		ts := nssFromParams(xf)
 
 		penalty := 1.0e3
 		scale := float64(len(bonds))
@@ -181,14 +207,14 @@ func main() {
 			}
 		}
 
-		for i, bond := range bonds {
+		for i := range bonds {
 			// minimize least-squares of yields
 			if math.IsNaN(yields[i]) {
 				continue
 			}
 
-			value := bond.PresentValue(ts)
-			est, err := fixedincome.Irr(value, &bond)
+			value := cashflow.PV(flows[i], ts)
+			est, err := yieldPercent(value, flows[i])
 			if err != nil {
 				log.Printf("yield for bond [%d] not "+
 					"converged\n", i)
@@ -201,10 +227,7 @@ func main() {
 		return sst
 	}
 
-	termStart := term.NelsonSiegelSvensson{
-		B0: x[0], B1: x[1], B2: x[2], B3: x[3], T1: x[4], T2: x[5],
-		Spread: 0.0,
-	}
+	termStart := nssFromParams(x)
 
 	// solve optimization problem
 	p := optimize.Problem{
@@ -225,19 +248,14 @@ func main() {
 	log.Println("..done")
 
 	// store optmizated parameters
-	termNss := term.NelsonSiegelSvensson{
-		B0:     result.X[0],
-		B1:     result.X[1],
-		B2:     result.X[2],
-		B3:     result.X[3],
-		T1:     result.X[4],
-		T2:     result.X[5],
-		Spread: 0.0,
-	}
+	termNss := nssFromParams(result.X)
+	meta := term.Meta{AsOf: lastTradingDay}
 
 	fmt.Println("Nelson-Siegel-Svensson term structure:")
-	printTerm(&termNss)
-	printTermToFile(&termNss, "nss_opt.json")
+	printTerm(termNss, meta)
+	if err := printTermToFile(termNss, meta, "nss_opt.json"); err != nil {
+		log.Println(err)
+	}
 
 	// *******************************************************************
 	// optimized Spline
@@ -246,9 +264,9 @@ func main() {
 	// collect all maturities
 	temp := []float64{}
 	xtmap := make(map[float64]bool)
-	for _, bond := range bonds {
-		for _, t := range bond.Schedule.M() {
-			xtmap[t] = true
+	for _, cfs := range flows {
+		for _, cf := range cfs {
+			xtmap[cf.T] = true
 		}
 	}
 
@@ -270,14 +288,14 @@ func main() {
 			// invalid trial point (e.g. non-positive discount factors)
 			return penalty * float64(len(bonds)+1)
 		}
-		for i, bond := range bonds {
+		for i := range bonds {
 			// minimize least-squares of yields
 			if math.IsNaN(yields[i]) {
 				continue
 			}
 
-			value := bond.PresentValue(ts)
-			est, err := fixedincome.Irr(value, &bond)
+			value := cashflow.PV(flows[i], ts)
+			est, err := yieldPercent(value, flows[i])
 			if err != nil {
 				log.Printf("yield for bond [%d] not "+
 					"converged\n", i)
@@ -298,7 +316,7 @@ func main() {
 	// use flat estimates
 	y := make([]float64, len(xt))
 	for i, x := range xt {
-		y[i] = termNss.Z(x)
+		y[i] = termNss.Discount(x)
 	}
 
 	result, err = optimize.Minimize(p, y, nil, nil)
@@ -318,27 +336,28 @@ func main() {
 	fmt.Println("Cubic spline term structure")
 	fmt.Println("Maturities      :", xt)
 	fmt.Println("Discount Factors:", result.X)
-	// printTerm(termSpline)
-	printTermToFile(termSpline, "spline_opt.json")
+	if err := printTermToFile(termSpline, meta, "spline_opt.json"); err != nil {
+		log.Println(err)
+	}
 
 	// *******************************************************************
 	// print output
 	// *******************************************************************
 	output := [][]string{}
-	for i, bond := range bonds {
-		quoteNss := bond.PresentValue(&termNss) - bond.Accrued()
-		quoteSpline := bond.PresentValue(termSpline) - bond.Accrued()
-		t := bond.Last()
+	for i := range bonds {
+		quoteNss := cashflow.PV(flows[i], termNss) - accrued[i]
+		quoteSpline := cashflow.PV(flows[i], termSpline) - accrued[i]
+		t := flows[i][len(flows[i])-1].T
 		output = append(output, []string{
 			fmt.Sprintf("%v", t),
 			fmt.Sprintf("%v", quotes[i]),
-			fmt.Sprintf("%v", termStart.Rate(t)),
-			fmt.Sprintf("%v", termNss.Rate(t)),
-			fmt.Sprintf("%v", termSpline.Rate(t)),
+			fmt.Sprintf("%v", termStart.ZeroRate(t)*100.0),
+			fmt.Sprintf("%v", termNss.ZeroRate(t)*100.0),
+			fmt.Sprintf("%v", termSpline.ZeroRate(t)*100.0),
 			fmt.Sprintf("%v", quoteNss),
 			fmt.Sprintf("%v", quoteSpline),
-			fmt.Sprintf("%v", termNss.Z(t)),
-			fmt.Sprintf("%v", termSpline.Z(t)),
+			fmt.Sprintf("%v", termNss.Discount(t)),
+			fmt.Sprintf("%v", termSpline.Discount(t)),
 		})
 
 	}
@@ -400,17 +419,11 @@ func splineKnots(maturities []float64, nbonds int) []float64 {
 	return knots
 }
 
-// newSpline returns a cubic spline term structure without spread; in
-// contrast to term.NewSpline, it returns an error for invalid input
-func newSpline(maturities, factors []float64) (term.Structure, error) {
-	spline := term.Spline{
-		Maturities:      append([]float64{}, maturities...),
-		DiscountFactors: append([]float64{}, factors...),
-	}
-	if err := spline.Init(); err != nil {
-		return nil, err
-	}
-	return &spline, nil
+// newSpline returns a cubic spline term structure through the discount
+// factors at the knots; it returns an error for invalid input (e.g.
+// non-positive discount factors proposed by the optimizer)
+func newSpline(maturities, factors []float64) (*term.Spline, error) {
+	return term.NewSpline(maturities, factors)
 }
 
 // parseDate parses a date in one of the accepted date formats
@@ -432,8 +445,8 @@ func printResult(result *optimize.Result) {
 	fmt.Printf("Stats.FuncEvaluations: %d\n\n", result.Stats.FuncEvaluations)
 }
 
-func printTerm(ts term.Structure) {
-	text, err := json.MarshalIndent(ts, " ", "")
+func printTerm(ts term.Curve, meta term.Meta) {
+	text, err := term.Marshal(ts, meta)
 	if err != nil {
 		log.Println(err)
 		return
@@ -441,8 +454,8 @@ func printTerm(ts term.Structure) {
 	fmt.Println(string(text))
 }
 
-func printTermToFile(ts term.Structure, name string) error {
-	data, err := json.MarshalIndent(ts, " ", "")
+func printTermToFile(ts term.Curve, meta term.Meta, name string) error {
+	data, err := term.Marshal(ts, meta)
 	if err != nil {
 		return err
 	}

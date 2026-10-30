@@ -3,8 +3,8 @@ package bond_test
 import (
 	"math"
 	"testing"
-	"time"
 
+	"github.com/konimarti/fixedincome/pkg/cashflow"
 	"github.com/konimarti/fixedincome/pkg/instrument/bond"
 	"github.com/konimarti/fixedincome/pkg/maturity"
 	"github.com/konimarti/fixedincome/pkg/term"
@@ -12,54 +12,66 @@ import (
 
 // TestMatured checks that bonds that have matured have no value
 func TestMatured(t *testing.T) {
-	ts := &term.Flat{R: 2.0, Spread: 0.0}
-	maturityDate := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	ts := term.Flat{Rate: 0.02}
+	maturityDate := date(2026, 1, 1)
+	schedule := maturity.Schedule{
+		Maturity:  maturityDate,
+		Frequency: maturity.Annual,
+		DayCount:  maturity.ActAct,
+	}
+	straight := mustStraight(t, schedule, 0.05)
+	floating := mustFloating(t, schedule, 0, bond.WithFixing(0.05))
 
-	for _, settlement := range []time.Time{maturityDate, maturityDate.AddDate(0, 0, 1), maturityDate.AddDate(1, 0, 0)} {
-		schedule := maturity.Schedule{
-			Settlement: settlement,
-			Maturity:   maturityDate,
-			Frequency:  1,
-			Basis:      "ACTACT",
+	for _, settlement := range []string{"on", "after", "year after"} {
+		settle := maturityDate
+		switch settlement {
+		case "after":
+			settle = maturityDate.AddDate(0, 0, 1)
+		case "year after":
+			settle = maturityDate.AddDate(1, 0, 0)
 		}
-		straight := bond.Straight{Schedule: schedule, Coupon: 5.0, Redemption: 100.0}
-		floating := bond.Floating{Schedule: schedule, Rate: 5.0, Redemption: 100.0}
-
-		for name, sec := range map[string]interface {
-			PresentValue(term.Structure) float64
-			Duration(term.Structure) float64
-			Convexity(term.Structure) float64
-		}{"straight": &straight, "floating": &floating} {
-			if pv := sec.PresentValue(ts); pv != 0.0 {
-				t.Errorf("%s settled %s: present value of matured bond; got %v, expected 0", name, settlement.Format("2006-01-02"), pv)
-			}
-			if d := sec.Duration(ts); d != 0.0 {
-				t.Errorf("%s settled %s: duration of matured bond; got %v, expected 0", name, settlement.Format("2006-01-02"), d)
-			}
-			if c := sec.Convexity(ts); c != 0.0 {
-				t.Errorf("%s settled %s: convexity of matured bond; got %v, expected 0", name, settlement.Format("2006-01-02"), c)
-			}
+		cfs, err := straight.CashFlows(settle)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(cfs) != 0 {
+			t.Errorf("straight settled %s maturity: got cash flows %v", settlement, cfs)
+		}
+		if pv, _ := straight.DirtyPrice(settle, ts); pv != 0.0 {
+			t.Errorf("straight settled %s maturity: present value %v, expected 0", settlement, pv)
+		}
+		if a, _ := straight.Accrued(settle); a != 0.0 {
+			t.Errorf("straight settled %s maturity: accrued %v, expected 0", settlement, a)
+		}
+		if d := cashflow.Duration(cfs, ts); d != 0.0 {
+			t.Errorf("straight settled %s maturity: duration %v, expected 0", settlement, d)
+		}
+		if c := cashflow.Convexity(cfs, ts); c != 0.0 {
+			t.Errorf("straight settled %s maturity: convexity %v, expected 0", settlement, c)
+		}
+		if pv, _ := floating.PresentValue(settle, ts, ts); pv != 0.0 {
+			t.Errorf("floating settled %s maturity: present value %v, expected 0", settlement, pv)
+		}
+		if d, _ := bond.FloatingDuration(floating, settle, ts, ts); d != 0.0 {
+			t.Errorf("floating settled %s maturity: duration %v, expected 0", settlement, d)
+		}
+		if c, _ := bond.FloatingConvexity(floating, settle, ts, ts); c != 0.0 {
+			t.Errorf("floating settled %s maturity: convexity %v, expected 0", settlement, c)
 		}
 	}
 
 	// one day before maturity: final coupon and redemption are discounted
-	// over one day (ACTACT: 1/365 years)
-	schedule := maturity.Schedule{
-		Settlement: maturityDate.AddDate(0, 0, -1),
-		Maturity:   maturityDate,
-		Frequency:  1,
-		Basis:      "ACTACT",
-	}
-	straight := bond.Straight{Schedule: schedule, Coupon: 5.0, Redemption: 100.0}
-	floating := bond.Floating{Schedule: schedule, Rate: 5.0, Redemption: 100.0}
+	// over one day (1/365 years)
+	settle := maturityDate.AddDate(0, 0, -1)
 	expected := 105.0 * math.Exp(-0.02/365.0)
-	if pv := straight.PresentValue(ts); math.Abs(pv-expected) > 1e-9 {
+	if pv, _ := straight.DirtyPrice(settle, ts); math.Abs(pv-expected) > 1e-9 {
 		t.Errorf("straight one day before maturity; got %v, expected %v", pv, expected)
 	}
-	if pv := floating.PresentValue(ts); math.Abs(pv-expected) > 1e-9 {
+	if pv, _ := floating.PresentValue(settle, ts, ts); math.Abs(pv-expected) > 1e-9 {
 		t.Errorf("floating one day before maturity; got %v, expected %v", pv, expected)
 	}
-	if d := straight.Duration(ts); math.Abs(d+1.0/365.0) > 1e-9 {
-		t.Errorf("straight duration one day before maturity; got %v, expected %v", d, -1.0/365.0)
+	cfs, _ := straight.CashFlows(settle)
+	if d := cashflow.Duration(cfs, ts); math.Abs(d-1.0/365.0) > 1e-12 {
+		t.Errorf("straight duration one day before maturity; got %v, expected %v", d, 1.0/365.0)
 	}
 }

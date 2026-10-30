@@ -10,9 +10,11 @@ import (
 
 // HoLee implements the Ho-Lee interest rate model
 type HoLee struct {
-	// R0 is the initial rate (known today)
+	// R0 is the initial short rate (known today; continuously compounded,
+	// decimal)
 	R0 float64
 	// Sigma is the standard deviation of the short term interest rate
+	// (decimal per square root of a year)
 	Sigma float64
 	// T is the maturity (up to which to calculate the interes rates)
 	T float64
@@ -27,9 +29,9 @@ type HoLee struct {
 }
 
 // New creates a new Ho-Lee model
-func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) float64) (*HoLee, error) {
+func New(ts term.Curve, sigma, t float64, n int, payoff func([]float64) float64) (*HoLee, error) {
 	hl := &HoLee{
-		R0:     ts.Rate(t / float64(n)),
+		R0:     ts.ZeroRate(t / float64(n)),
 		Sigma:  sigma,
 		T:      t,
 		N:      n,
@@ -42,7 +44,7 @@ func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) floa
 }
 
 // Calibrate calculates the parameters of the Ho-Lee model (theta's) to match the current yield curve
-func Calibrate(hl *HoLee, ts term.Structure) error {
+func Calibrate(hl *HoLee, ts term.Curve) error {
 	n := hl.N
 	dt := hl.T / float64(n)
 
@@ -51,11 +53,11 @@ func Calibrate(hl *HoLee, ts term.Structure) error {
 
 	// calculate current rates, forward rates and thetas on the grid
 	for i := 0; i < n+2; i += 1 {
-		r[i] = ts.Rate(float64(i+1)*dt) / 100.0
+		r[i] = ts.ZeroRate(float64(i+1) * dt)
 	}
 	for i := 0; i < n+1; i += 1 {
 		// f[i] = r[i] + float64(i+1)*(r[i+1]-r[i])
-		f[i] = -math.Log(ts.Z(float64(i+2)*dt)/ts.Z(float64(i+1)*dt)) / dt
+		f[i] = -math.Log(ts.Discount(float64(i+2)*dt)/ts.Discount(float64(i+1)*dt)) / dt
 	}
 	for i := 0; i < n; i += 1 {
 		hl.Theta[i] = (f[i+1]-f[i])/dt + math.Pow(hl.Sigma, 2.0)*float64(i+1)*dt
@@ -70,7 +72,7 @@ func (hl *HoLee) Measurement() float64 {
 	rates := make([]float64, n)
 
 	// simulate interest rates
-	rates[0] = hl.R0 / 100.0
+	rates[0] = hl.R0
 	for i := 0; i < (n - 1); i += 1 {
 		rates[i+1] = rates[i] + hl.Theta[i]*dt + hl.Sigma*math.Sqrt(dt)*hl.Rng.NormFloat64()
 	}

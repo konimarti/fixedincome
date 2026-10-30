@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -25,14 +24,16 @@ func main() {
 		fatalTerm(fmt.Errorf("reading term structure failed: %w", err))
 	}
 
-	ts, err := term.Parse(termData)
+	ts, _, err := term.Parse(termData)
 	if err != nil {
 		fatalTerm(fmt.Errorf("parsing term structure from %s failed: %w", *fileFlag, err))
 	}
 	fmt.Fprintln(os.Stderr, "Term model read from", *fileFlag)
 
-	// set the spread of the term structure explicitly
-	ts.SetSpread(*spread)
+	// set the spread of the term structure explicitly (flag in bp; replaces
+	// the spread of the curve file)
+	ts, _ = term.Spread(ts)
+	ts = term.WithSpread(ts, *spread/1e4)
 	fmt.Fprintf(os.Stderr, "Spread: %.2f bps\n", *spread)
 
 	// calculate swap rate for maturities t
@@ -42,12 +43,12 @@ func main() {
 		for k := 0.5; k <= t; k += 0.5 {
 			m = append(m, k)
 		}
-		swaprate, err := swap.InterestRate(m, 2, ts)
+		swaprate, err := swap.ParRateFromTimes(m, 2, ts)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("%2.1f\t\t%6.2f\n", t, swaprate)
+		fmt.Printf("%2.1f\t\t%6.2f\n", t, swaprate*100.0)
 	}
 }
 
@@ -55,8 +56,7 @@ func main() {
 // stderr and exits with a non-zero exit code
 func fatalTerm(err error) {
 	fmt.Fprintln(os.Stderr, "error:", err)
-	fmt.Fprintln(os.Stderr, "Use the following template for the Nelson-Siegel-Svensson yield curve:")
-	data, _ := json.MarshalIndent(term.NelsonSiegelSvensson{}, " ", "")
-	fmt.Fprintln(os.Stderr, string(data))
+	fmt.Fprintln(os.Stderr, "Use the following template for the Nelson-Siegel-Svensson yield curve (betas in percent):")
+	fmt.Fprintln(os.Stderr, `{"model": "nss", "params": {"b0": -0.266372, "b1": -0.471343, "b2": 5.68789, "b3": -5.12324, "t1": 5.74881, "t2": 4.14426}, "spread_bp": 0}`)
 	os.Exit(1)
 }

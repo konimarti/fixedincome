@@ -11,11 +11,11 @@ import (
 
 // Vasicek implements the basic Vasicek interest rate model
 type Vasicek struct {
-	// R0
+	// R0 is the initial short rate (continuously compounded, decimal)
 	R0 float64
-	// Rbar
+	// Rbar is the long-run mean of the short rate (decimal)
 	Rbar float64
-	// Gamma
+	// Gamma is the speed of mean reversion (per year)
 	Gamma float64
 	// Sigma is the standard deviation of the first difference of the short term interest rate
 	Sigma float64
@@ -30,10 +30,10 @@ type Vasicek struct {
 }
 
 // New creates a new Vasicek model
-func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) float64) (*Vasicek, error) {
+func New(ts term.Curve, sigma, t float64, n int, payoff func([]float64) float64) (*Vasicek, error) {
 	v := &Vasicek{
-		R0:     ts.Rate(t/float64(n)) / 100.0,
-		Rbar:   ts.Rate(t) / 100.0,
+		R0:     ts.ZeroRate(t / float64(n)),
+		Rbar:   ts.ZeroRate(t),
 		Gamma:  1.0,
 		Sigma:  sigma,
 		T:      t,
@@ -46,7 +46,7 @@ func New(ts term.Structure, sigma, t float64, n int, payoff func([]float64) floa
 }
 
 // Calibrate calculates the parameters of the Vasicek model
-func Calibrate(v *Vasicek, ts term.Structure) error {
+func Calibrate(v *Vasicek, ts term.Curve) error {
 
 	// initial estimate
 	x := []float64{
@@ -62,7 +62,7 @@ func Calibrate(v *Vasicek, ts term.Structure) error {
 		sum := 0.0
 		dt := v.T / float64(v.N)
 		for t := dt; t < v.T*1.5; t += dt {
-			sum += math.Pow(v.Z(v.R0, 0.0, t)-ts.Z(t), 2.0)
+			sum += math.Pow(v.Z(v.R0, 0.0, t)-ts.Discount(t), 2.0)
 		}
 		return sum
 	}

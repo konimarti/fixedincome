@@ -6,36 +6,47 @@ import (
 	"github.com/konimarti/fixedincome/pkg/term"
 )
 
-// FxRate returns the swap rate which equals the current exchange rate multiplied
-// by the ratio of the relative borrowing costs in the two currencies
-func FxRate(currentFx float64, cashflows, maturities []float64, tsLong, tsShort term.Structure) (float64, error) {
-	var short, long float64
-	for i, t := range maturities {
-		long += cashflows[i] * tsLong.Z(t)
-		short += cashflows[i] * tsShort.Z(t)
+// FxRate returns the fixed exchange rate K of a plain vanilla currency swap
+// that exchanges the cash flows (amounts in foreign currency) at the times
+// (years) at the rate K: the current exchange rate currentFx (domestic per
+// foreign) multiplied by the ratio of the present values of the cash flows
+// in the two currencies, currentFx * PV_foreign / PV_domestic.
+func FxRate(currentFx float64, cashflows, times []float64, domestic, foreign term.Curve) (float64, error) {
+	if len(cashflows) != len(times) {
+		return 0.0, fmt.Errorf("swap: number of cash flows (%d) and times (%d) differ", len(cashflows), len(times))
 	}
-	return currentFx * short / long, nil
+	var pvForeign, pvDomestic float64
+	for i, t := range times {
+		pvDomestic += cashflows[i] * domestic.Discount(t)
+		pvForeign += cashflows[i] * foreign.Discount(t)
+	}
+	if pvDomestic == 0 {
+		return 0.0, fmt.Errorf("swap: present value of the cash flows is zero")
+	}
+	return currentFx * pvForeign / pvDomestic, nil
 }
 
-// InterestRate returns the swap rate. The swap rate c is given by the number that makes
-// the value of the swap V(0;c,T) equal to zero at initiation.
-// The maturities can be given in any order; the final maturity T is the
-// largest one.
-func InterestRate(maturities []float64, compounding int, ts term.Structure) (float64, error) {
-	if len(maturities) == 0 {
-		return 0.0, fmt.Errorf("no maturities given")
+// ParRateFromTimes returns the par swap rate (decimal) for fixed payments n
+// times per year at the given payment times (years, in any order) on a
+// single curve: n * (1 - Z(T)) / sum(Z(t_i)), with T the largest time. It
+// assumes regular periods of 1/n years starting today.
+func ParRateFromTimes(times []float64, n int, c term.Curve) (float64, error) {
+	if len(times) == 0 {
+		return 0.0, fmt.Errorf("swap: no payment times given")
+	}
+	if n <= 0 {
+		return 0.0, fmt.Errorf("swap: invalid payment frequency %d", n)
 	}
 	var sum float64
-	last := maturities[0]
-	for _, t := range maturities {
-		sum += ts.Z(t)
+	last := times[0]
+	for _, t := range times {
+		sum += c.Discount(t)
 		if t > last {
 			last = t
 		}
 	}
 	if sum == 0.0 {
-		return 0.0, fmt.Errorf("sum of zero-coupon bonds across maturities is zero")
+		return 0.0, fmt.Errorf("swap: sum of discount factors is zero")
 	}
-	swaprate := float64(compounding) * ((1.0 - ts.Z(last)) / sum) * 100.0
-	return swaprate, nil
+	return float64(n) * (1.0 - c.Discount(last)) / sum, nil
 }
