@@ -96,6 +96,7 @@ func commands() []command {
 		{"curve template", "print a template curve file", buildCurveTemplate},
 		{"bond fetch", "fetch bonds with prices from SIX Swiss Exchange as a bond CSV", buildBondFetch},
 		{"bond price", "price, yield, z-spread and risk of fixed-coupon bonds", buildBondPrice},
+		{"portfolio risk", "duration, DV01, key rate durations and scenarios of a bond portfolio (positions CSV with nominal)", buildPortfolioRisk},
 		{"swap rate", "par swap rates for a set of tenors", buildSwapRate},
 		{"option price", "Black-Scholes price and Greeks of a European option", buildOptionPrice},
 		{"sim zcb", "Monte Carlo zero bond prices of a short rate model vs. the curve", buildSimZCB},

@@ -58,6 +58,7 @@ go install github.com/konimarti/fixedincome/cmds/fic@latest   # puts fic in $(go
 | Callable bond: OAS, effective duration | `fic bond price --curve curve.json --coupon 2 --maturity 2031-03-31 --price 101 --call-from 2026-03-31@100 --vol 1.0 --format json` (or `--call DATE@PRICE,...`, `--put`) |
 | Price a bond list | `fic bond price --curve curve.json --in bonds.csv --format csv` |
 | Average z-spread per issuer or rating | `fic bond price --curve curve.json --in bonds.csv --group-by issuer` (or `rating`) |
+| Portfolio risk (long/short, nominal column) | `fic portfolio risk --curve curve.json --in positions.csv [--vol 1.0] [--scenarios parallel,irrbb] [--group-by rating] --format json` (`--section summary\|krd\|scenarios\|positions`) |
 | Par swap rates | `fic swap rate --curve curve.json --tenors 2y,5y,10y` |
 | Option price and Greeks | `fic option price --type call --spot 110 --strike 100 --expiry 2y --vol 30 --rate 2` |
 | Implied volatility | `fic option price --type call --spot 110 --strike 100 --expiry 2y --implied-from 28.5 --rate 2` |
@@ -93,6 +94,12 @@ price in percent of face, a missing price is an empty field. `freq` is 1, 2, 3, 
   bond and `fic` exits 2 without it. The OAS depends on the vol and `--mean-reversion` (default 0.03), so state the
   assumed values. `mod_duration`/`dv01` are effective ones for these bonds, `zspread_bp` is the straight bond's. Call
   schedules must come from the user; puts are ignored in the yield to worst.
+- **Portfolio risk.** `positions.csv` is a bond file with a required `nominal` column (currency units of face,
+  negative = short or liability; exit 2 without it). Spreads (z-spread, OAS) are solved from the prices and held
+  constant; scenarios are full revaluations. Duration and KRD are ratios to the *net* market value: for a hedged book
+  quote `dv01` and `key_dv01` (currency per bp) instead. The IRRBB shock sizes (`--irrbb-parallel/-short/-long`, bp)
+  are illustrative defaults and no floor on shocked rates is applied: ask the user for the current BCBS d368 / FINMA values and say which were used. `--strict` prints nothing if a row is excluded or unpriced. Excluded
+  rows are listed in `--section positions` (`status`) and on stderr.
 - **Spreads.** `zspread_bp` is the spread over the curve actually used (curve file plus `--spread`);
   `spread_total_bp` is relative to the curve without any spread.
 - **Not covered:** notional exchange and calendars in swaps, compounded-in-arrears floaters (SARON, SOFR, ESTR),

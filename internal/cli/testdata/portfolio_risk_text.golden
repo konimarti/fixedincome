@@ -1,0 +1,37 @@
+Portfolio risk as of 2021-03-31: 6 positions, 0 excluded
+mv_dirty: 9959875
+mv_clean: 9933000
+accrued: 26875
+gross_mv: 17999875
+mod_duration: 6.0367713
+convexity: 40.951322
+dv01: -6010.1874
+
+Key rate durations (years; key_dv01 in currency per 1bp)
+tenor  years  krd           key_dv01
+3m     0.25   0.0003136287  -0.31237027
+6m     0.5    0.0015025104  -1.4964816
+1y     1      0.011669503   -11.622679
+2y     2      0.024848971   -24.749264
+3y     3      1.5304835     -1524.3424
+5y     5      1.8803668     -1872.8218
+7y     7      -2.1919712    2183.176
+10y    10     2.7052187     -2694.3641
+15y    15     1.8716164     -1864.1065
+20y    20     0.20347259    -202.65615
+30y    30     0             0
+
+Scenarios (full revaluation, spreads held; pv_change_pct of |PV|)
+scenario         pv_change   pv_change_pct  approx_change  approx_error  approx_basis
+parallel +50bp   -295657.25  -2.9684835     -295529.06     128.18839     duration_convexity
+parallel -50bp   305858.71   3.0709091      305725.81      -132.89627    duration_convexity
+parallel +100bp  -581466.03  -5.8380856     -580861.37     604.65862     duration_convexity
+parallel -100bp  622549.92   6.2505796      621648.38      -901.53812    duration_convexity
+parallel +200bp  -1124054.7  -11.285831     -1120935.7     3118.9169     duration_convexity
+parallel -200bp  1292359.5   12.975659      1284083.8      -8275.6964    duration_convexity
+parallel_up      -581466.03  -5.8380856     -580861.37     604.65862     duration_convexity
+parallel_down    622549.92   6.2505796      621648.38      -901.53812    duration_convexity
+steepener        -317375.03  -3.1865363     -321954.62     -4579.5878    krd
+flattener        154071.18   1.5469188      150325.43      -3745.7547    krd
+short_up         -172370.34  -1.7306476     -175393.6      -3023.2623    krd
+short_down       175295.15   1.7600135      175393.6       98.452454     krd

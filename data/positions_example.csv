@@ -1,0 +1,7 @@
+maturity,coupon_pct,price_clean,id,issuer,rating,nominal,call_from
+2024-03-31,1.0,101.2,CONF3Y,Confederation,AAA,5000000,
+2026-06-15,0.5,102.1,CONF5Y,Confederation,AAA,3000000,
+2031-03-31,1.5,106.5,CONF10Y,Confederation,AAA,2000000,
+2036-09-30,2.0,112.0,CORP15Y,Example Corp,A,1500000,
+2031-03-31,2.0,101.0,CALLABLE10Y,Example Bank,AA,2000000,2026-03-31@100
+2028-03-31,1.0,100.5,FUNDING7Y,Own Bank,A,-4000000,

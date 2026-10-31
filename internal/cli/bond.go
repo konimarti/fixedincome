@@ -77,11 +77,7 @@ func valueBond(in bondInput, settle time.Time, curve term.Curve) (bondValue, err
 	if !settle.Before(in.maturity) {
 		return v, fmt.Errorf("maturity %s is not after the settlement date %s", formatDate(in.maturity), formatDate(settle))
 	}
-	opts := []bond.Option{bond.WithFace(in.face)}
-	if in.redemption != nil {
-		opts = append(opts, bond.WithRedemption(*in.redemption))
-	}
-	b, err := bond.NewStraight(maturity.Schedule{Maturity: in.maturity, Frequency: in.freq, DayCount: in.dc}, in.coupon, opts...)
+	b, err := newStraight(in)
 	if err != nil {
 		return v, err
 	}
@@ -138,6 +134,34 @@ func valueBond(in bondInput, settle time.Time, curve term.Curve) (bondValue, err
 		}
 	}
 	return v, nil
+}
+
+// newStraight returns the straight bond of the input.
+func newStraight(in bondInput) (bond.Straight, error) {
+	opts := []bond.Option{bond.WithFace(in.face)}
+	if in.redemption != nil {
+		opts = append(opts, bond.WithRedemption(*in.redemption))
+	}
+	return bond.NewStraight(maturity.Schedule{Maturity: in.maturity, Frequency: in.freq, DayCount: in.dc}, in.coupon, opts...)
+}
+
+// parseHW validates the lattice flags: vol in percent per year (only if
+// set), mean reversion (decimal) and steps per year.
+func parseHW(set map[string]bool, vol, meanRev float64, steps int) (hwParams, error) {
+	hw := hwParams{a: meanRev, steps: steps}
+	if set["vol"] {
+		if !(vol > 0) || math.IsInf(vol, 0) {
+			return hw, usagef("invalid --vol %v: must be positive (percent per year)", vol)
+		}
+		hw.sigma = fromPct(vol)
+	}
+	if !(hw.a >= 0) || math.IsInf(hw.a, 0) {
+		return hw, usagef("invalid --mean-reversion %v: must be non-negative", meanRev)
+	}
+	if hw.steps < 1 {
+		return hw, usagef("invalid --steps %d: must be at least 1", steps)
+	}
+	return hw, nil
 }
 
 // parseFreq parses --freq (usage error listing the valid values).
@@ -206,18 +230,9 @@ func buildBondPrice(e *env) (*flag.FlagSet, func() error) {
 		if set["call"] && set["call-from"] {
 			return usagef("--call and --call-from cannot be combined")
 		}
-		hw := hwParams{a: *meanRev, steps: *steps}
-		if set["vol"] {
-			if !(*vol > 0) || math.IsInf(*vol, 0) {
-				return usagef("invalid --vol %v: must be positive (percent per year)", *vol)
-			}
-			hw.sigma = fromPct(*vol)
-		}
-		if !(hw.a >= 0) || math.IsInf(hw.a, 0) {
-			return usagef("invalid --mean-reversion %v: must be non-negative", *meanRev)
-		}
-		if hw.steps < 1 {
-			return usagef("invalid --steps %d: must be at least 1", *steps)
+		hw, err := parseHW(set, *vol, *meanRev, *steps)
+		if err != nil {
+			return err
 		}
 		if set["price"] && set["yield"] {
 			return usagef("--price and --yield cannot be combined")
@@ -348,6 +363,30 @@ type bondDefaults struct {
 	redemption *float64
 }
 
+// input returns the bond of the row with the defaults for the attributes
+// missing in the row.
+func (b bondRow) input(d bondDefaults, hw hwParams) bondInput {
+	bi := bondInput{maturity: b.maturity, coupon: b.coupon, freq: d.freq, dc: d.dc, face: d.face, redemption: d.redemption, opt: b.opt, hw: hw}
+	if b.freq != 0 {
+		bi.freq = b.freq
+	}
+	if b.dcSet {
+		bi.dc = b.dc
+	}
+	if b.face > 0 {
+		bi.face = b.face
+	}
+	if b.hasRed {
+		x := b.redemption
+		bi.redemption = &x
+	}
+	if b.hasPrice {
+		p := b.price
+		bi.price = &p
+	}
+	return bi
+}
+
 // bondTableCols are the columns of the batch output.
 func bondTableCols(withIssuer, withRating, withCall bool) []string {
 	cols := []string{"id"}
@@ -442,6 +481,9 @@ func (s *groupStats) table(name string, withCall bool) *table {
 // in the status column instead of aborting; the exit code is 1 only if all
 // rows failed.
 func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, groupBy string, d bondDefaults, hw hwParams) error {
+	if path == "-" && cf.path == "-" {
+		return usagef("stdin can be used only once (--curve - and --in -)")
+	}
 	r, closeIn, err := openInput(e, path)
 	if err != nil {
 		return err
@@ -474,27 +516,10 @@ func bondBatch(e *env, cf *curveFlags, ff *formatFlags, fmtOut format, path, gro
 	groups := &groupStats{}
 	for _, b := range bf.rows {
 		var v bondValue
-		fr, dc, face, red := d.freq, d.dc, d.face, d.redemption
-		if b.freq != 0 {
-			fr = b.freq
-		}
-		if b.dcSet {
-			dc = b.dc
-		}
-		if b.face > 0 {
-			face = b.face
-		}
-		if b.hasRed {
-			x := b.redemption
-			red = &x
-		}
+		bi := b.input(d, hw)
+		fr, dc := bi.freq, bi.dc
 		err := b.err
 		if err == nil {
-			bi := bondInput{maturity: b.maturity, coupon: b.coupon, freq: fr, dc: dc, face: face, redemption: red, opt: b.opt, hw: hw}
-			if b.hasPrice {
-				p := b.price
-				bi.price = &p
-			}
 			v, err = valueBond(bi, l.settle, l.curve)
 		}
 		row := []any{b.id}

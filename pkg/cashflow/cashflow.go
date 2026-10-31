@@ -281,6 +281,15 @@ func KeyRateDurations(cfs []CashFlow, c term.Curve, keys []float64, bump float64
 	return krd, nil
 }
 
+// KeyRateWeight returns the weight w_k(t) of the triangular bump of the
+// key tenor keys[k] used by KeyRateDurations: 1 at keys[k], linear down to 0
+// at the neighbouring keys, flat beyond the first and the last key. The
+// weights of all keys sum to 1 for every t. keys must be valid as for
+// KeyRateDurations and 0 <= k < len(keys).
+func KeyRateWeight(keys []float64, k int, t float64) float64 {
+	return keyRateCurve{keys: keys, k: k}.weight(t)
+}
+
 // keyRateCurve is the base curve with the zero rate bumped by h*w_k(t).
 type keyRateCurve struct {
 	base term.Curve

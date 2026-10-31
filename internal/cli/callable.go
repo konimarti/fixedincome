@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -94,14 +95,8 @@ type callable struct {
 	straightDuration float64
 }
 
-// valueCallable values the bond with its embedded options on the
-// Hull-White lattice. dirty is the market dirty price if market is true,
-// otherwise the bond is valued on the curve (OAS 0 relative to the curve
-// including its spread). It fills the model price, the spreads and the
-// effective risk measures of v.
-func valueCallable(in bondInput, v *bondValue, b bond.Straight, settle time.Time, curve term.Curve, cfs []cashflow.CashFlow, accrued, dirty float64) error {
-	scale := 100 / in.face
-	ct := in.opt
+// makeCallable returns the callable bond with the call and put terms ct.
+func makeCallable(b bond.Straight, ct *callTerms) (bond.Callable, error) {
 	var calls []bond.Call
 	for _, c := range ct.calls {
 		calls = append(calls, bond.Call{Date: c.date, Price: c.price})
@@ -109,10 +104,10 @@ func valueCallable(in bondInput, v *bondValue, b bond.Straight, settle time.Time
 	if ct.callFrom != nil {
 		cs, err := b.CallsOnCoupons(ct.callFrom.date, ct.callFrom.price)
 		if err != nil {
-			return err
+			return bond.Callable{}, err
 		}
 		if len(cs) == 0 {
-			return fmt.Errorf("no coupon date from %s before maturity", formatDate(ct.callFrom.date))
+			return bond.Callable{}, fmt.Errorf("no coupon date from %s before maturity", formatDate(ct.callFrom.date))
 		}
 		calls = append(calls, cs...)
 		sort.SliceStable(calls, func(i, j int) bool { return calls[i].Date.Before(calls[j].Date) })
@@ -121,7 +116,17 @@ func valueCallable(in bondInput, v *bondValue, b bond.Straight, settle time.Time
 	for _, p := range ct.puts {
 		puts = append(puts, bond.Put{Date: p.date, Price: p.price})
 	}
-	c, err := bond.NewCallable(b, calls, bond.WithPuts(puts...))
+	return bond.NewCallable(b, calls, bond.WithPuts(puts...))
+}
+
+// valueCallable values the bond with its embedded options on the
+// Hull-White lattice. dirty is the market dirty price if market is true,
+// otherwise the bond is valued on the curve (OAS 0 relative to the curve
+// including its spread). It fills the model price, the spreads and the
+// effective risk measures of v.
+func valueCallable(in bondInput, v *bondValue, b bond.Straight, settle time.Time, curve term.Curve, cfs []cashflow.CashFlow, accrued, dirty float64) error {
+	scale := 100 / in.face
+	c, err := makeCallable(b, in.opt)
 	if err != nil {
 		return err
 	}
@@ -135,6 +140,9 @@ func valueCallable(in bondInput, v *bondValue, b bond.Straight, settle time.Time
 	oas := 0.0
 	if v.market {
 		if oas, err = c.OAS(dirty, settle, curve, a, sigma, opts...); err != nil {
+			if errors.Is(err, cashflow.ErrNoYield) {
+				return fmt.Errorf("oas: %w (the price is outside the range reachable by the call/put terms, e.g. above the call price)", err)
+			}
 			return fmt.Errorf("oas: %w", err)
 		}
 		y, d, err := c.YieldToWorst(dirty, settle)

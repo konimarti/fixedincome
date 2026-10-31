@@ -7,6 +7,7 @@ Small fixtures for the examples, the tests (`internal/cli`) and the scripts.
 | `curve_snb_2021-03-31.json` | Nelson-Siegel-Svensson curve of the Swiss National Bank (CHF risk-free spot rates) as of 2021-03-31 | parameters published by the SNB ([data.snb.ch](https://data.snb.ch/en/topics/ziredev#!/cube/rendopar)), written with `fic curve template` |
 | `bonds_2021-11-26.csv` | 39 CHF bonds (money market bills and Swiss Confederation bonds) with the clean prices of 2021-11-26 | the former `bonddata.csv` of the removed `termfit` tool in the new format (ISINs/valor numbers in `id`); dates normalised to ISO, columns renamed |
 | `bonds_callable_example.csv` | four synthetic bonds with call, call_from and put terms for `fic bond price --in --vol 1.0` with the 2021-03-31 curve | made up for the examples and tests |
+| `positions_example.csv` | six synthetic positions (Confederation, corporate, a callable and a short funding position, negative `nominal`) for `fic portfolio risk --in --vol 1.0` with the 2021-03-31 curve | made up for the examples and tests |
 | `fit_residuals_2021-11-26.csv` | per-bond residuals of the NSS and spline fits of `bonds_2021-11-26.csv` | `fic curve fit`, see "Regenerating the samples" |
 | `fit_2021-11-26.png` | plot of the fits and residuals | `r/curve.R` on the residuals file |
 
@@ -47,6 +48,7 @@ insensitive, any order, unknown columns ignored):
 | `freq` | coupons per year (1, 2, 3, 4, 6, 12), default `--freq` | no |
 | `daycount` | `30E360`, `EUROBOND`, `BONDBASIS`, `ACT360`, `ACTACT`, default `--daycount` | no |
 | `face`, `redemption` | face value (default 100) and redemption (default face) | no |
+| `nominal` | position size in currency units of face, negative for a short position (required by `fic portfolio risk`, ignored elsewhere) | no |
 | `issuer`, `rating` | echoed to the output; `fic bond price --in --group-by issuer\|rating` aggregates per issuer or rating; `fic bond fetch --source six` writes both | no |
 
 Without a header the columns are `maturity,coupon,price,id`. CRLF line endings,

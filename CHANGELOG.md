@@ -4,6 +4,16 @@
 
 ### Added
 
+- **`fic portfolio risk --curve C --in positions.csv`**: interest rate risk of a bond portfolio with long and short
+  positions (bond CSV plus a required `nominal` column, negative for shorts): market value, money-weighted
+  duration and convexity, DV01, key rate durations (triangular bumps, `--krd-tenors`; effective ones by lattice
+  recalibration for callable rows) as years and as currency per bp, full-revaluation scenarios with the spreads held
+  (`--scenarios parallel|irrbb|none`, `--shocks`, `--irrbb-parallel/short/long`; the IRRBB magnitudes are illustrative
+  defaults and no floor on the shocked rates is applied) next to the duration/convexity approximation, `--group-by issuer|rating|freq|daycount`,
+  `--section summary|krd|scenarios|positions`, `--strict` (no output if a row is excluded or unpriced), `gross_mv`;
+  duration, KRD and weights are empty for a hedged book (net value ~0). See docs/cli.md. Sample: `data/positions_example.csv`.
+- Library: package `portfolio` (`Evaluate`, `Aggregate`, `GroupBy`, `Shift`, `Scenario`, `IRRBB`) and
+  `cashflow.KeyRateWeight`.
 - **Callable and putable bonds in `fic bond price`**: `--call DATE@PRICE[,...]`, `--put`, `--call-from DATE@PRICE`,
   `--vol PCT` (required), `--mean-reversion` (default 0.03), `--steps` (default 50). Hull-White lattice value, OAS,
   yield to worst, effective duration and convexity, DV01, option value; `--in` accepts the CSV columns `call`,

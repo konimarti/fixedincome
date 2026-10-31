@@ -86,6 +86,13 @@ fic bond price --curve curve.json --in bonds.csv --format csv > priced.csv
 fic bond price --curve curve.json --in bonds.csv --group-by issuer   # duration-weighted z-spread per issuer
 ```
 
+**Portfolio risk: key rate durations and scenarios of long and short positions** (CSV with a `nominal` column)
+
+```sh
+fic portfolio risk --curve curve.json --in data/positions_example.csv --vol 1.0 --scenarios irrbb --group-by rating
+fic portfolio risk --curve curve.json --in positions.csv --vol 1.0 --format csv > positions_risk.csv
+```
+
 **Fit a curve to the CHF bonds of an issuer, by rating**
 
 ```sh

@@ -42,6 +42,11 @@ type bondRow struct {
 	redemption float64
 	hasRed     bool
 	weight     float64
+	// nominal is the position size in currency units of face (negative: short
+	// or liability), read by "portfolio risk"; nominalErr is its problem (not
+	// an error of the bond: only the portfolio commands fail on it)
+	nominal    float64
+	nominalErr error
 	// opt are the call and put terms (nil: straight bond)
 	opt *callTerms
 	err error
@@ -51,6 +56,8 @@ type bondRow struct {
 type bondFile struct {
 	rows                 []bondRow
 	hasIssuer, hasRating bool
+	// hasNominal is true if the file has a nominal column
+	hasNominal bool
 	// callable is true if a row has call or put terms
 	callable bool
 }
@@ -66,7 +73,7 @@ var bondColumnAliases = map[string]string{
 	"id": "id", "isin": "id",
 	"freq": "freq", "frequency": "freq",
 	"daycount": "daycount", "day_count": "daycount",
-	"face": "face", "redemption": "redemption", "weight": "weight",
+	"nominal": "nominal", "face": "face", "redemption": "redemption", "weight": "weight",
 	"issuer": "issuer", "rating": "rating",
 	"call": "call", "call_from": "call_from", "put": "put",
 }
@@ -148,6 +155,7 @@ func readBondRows(r io.Reader) (*bondFile, error) {
 	bf := &bondFile{}
 	_, bf.hasIssuer = col["issuer"]
 	_, bf.hasRating = col["rating"]
+	_, bf.hasNominal = col["nominal"]
 	get := func(row []string, name string) (string, bool) {
 		i, ok := col[name]
 		if !ok || i >= len(row) {
@@ -226,6 +234,13 @@ func readBondRows(r io.Reader) (*bondFile, error) {
 				fail("invalid redemption %q", v)
 			} else {
 				b.redemption, b.hasRed = f, true
+			}
+		}
+		if v, ok := get(row, "nominal"); ok {
+			if f, err := parseFinite(v); err != nil || f == 0 {
+				b.nominalErr = fmt.Errorf("invalid nominal %q (non-zero number, negative for a short position)", v)
+			} else {
+				b.nominal = f
 			}
 		}
 		if v, ok := get(row, "weight"); ok && v != "" {

@@ -4,7 +4,7 @@ Full reference of the command line tool. For a short introduction see the [READM
 
 
 ```
-fic curve fetch | fit | compare | show | forward | template     fic bond price     fic swap rate     fic option price     fic sim zcb
+fic curve fetch | fit | compare | show | forward | template     fic bond price     fic portfolio risk     fic swap rate     fic option price     fic sim zcb
 fic version        fic help [command]
 ```
 
@@ -35,6 +35,7 @@ Flags work with one or two dashes (`--curve` is documented). `fic help <command>
 | `fic curve template` | `--model nss\|spline\|flat`, `-o`: a valid curve file |
 | `fic bond fetch` | `--source six` (required), `--issuer NAME` (case-insensitive substring of the short issuer name; `*`, `\|` and control characters are a usage error), `--rating AAA,AA,...` (exact composite ratings, default all incl. unrated), `--currency CHF` (trading currency, three upper-case letters), `--file FILE\|-` (parse a downloaded SIX CSV, no network; the filters are applied to it), `--timeout 30s`, `--format csv`, `-o FILE` (default stdout, atomic). Writes the bond CSV `maturity,coupon_pct,price_clean,id,freq,daycount,issuer,rating` sorted by maturity, then ISIN; see "SIX bond data" below. Exit 2 for usage errors, 1 for network or format errors and when no usable bond is left (the message names the filters) |
 | `fic bond price` | `--curve`, `--date`, `--spread BP`, `--maturity D\|5y`, `--coupon PCT`, `--freq 1\|2\|3\|4\|6\|12` (default 1), `--daycount 30E360\|EUROBOND\|BONDBASIS\|ACT360\|ACTACT`, `--face 100`, `--redemption` (default: the face value), one of `--price CLEAN` (percent of face) or `--yield PCT` (cc), or `--in FILE\|-` for a bond CSV (batch), with `--in`: `--group-by issuer\|rating\|freq\|daycount` (one row per group, see below); callable and putable bonds: `--call DATE@PRICE[,DATE@PRICE...]`, `--put DATE@PRICE[,...]`, `--call-from DATE@PRICE` (exclusive with `--call`), `--vol PCT` (required with these), `--mean-reversion A` (default 0.03), `--steps N` (default 50), see "Callable and putable bonds" below |
+| `fic portfolio risk` | `--curve`, `--date`, `--spread BP`, `--in FILE\|-` (required: positions CSV, see below), `--freq`, `--daycount`, `--face` (defaults of missing columns), `--vol PCT`, `--mean-reversion A`, `--steps N` (as `bond price`, needed for call/put rows), `--krd-tenors 3m,6m,1y,...` (default `3m,6m,1y,2y,3y,5y,7y,10y,15y,20y,30y`), `--shocks 50,100,200` (bp), `--scenarios parallel\|irrbb\|none` (comma-separated list allowed, default parallel), `--irrbb-parallel BP`, `--irrbb-short BP`, `--irrbb-long BP`, `--group-by issuer\|rating\|freq\|daycount`, `--section summary\|krd\|scenarios\|positions`, `--strict`, `--format`, `-o`. See "Portfolio risk" below |
 | `fic swap rate` | `--curve`, `--fwd-curve FILE` (forecast curve of the floating leg, default the same curve), `--tenors 2y,3y,...,10y`, `--freq 2`, `--spread BP` (on the discount curve). Swaps start at the curve date, so par rates do not depend on a valuation date and `swap rate` has no `--date` flag. Columns `tenor, tenor_years, freq, par_rate_pct, annuity` |
 | `fic option price` | `--type call\|put`, `--spot S`, `--strike K`, `--expiry 2y\|2.5\|DATE` (a date `YYYY-MM-DD` / `DD.MM.YYYY` is relative to `--date`), `--vol PCT` or `--implied-from PRICE`, `--rate PCT` or `--curve FILE` (zero rate at the expiry), `--div PCT`, `--date`. Columns `type, spot, strike, expiry_years, vol_pct, rate_cc_pct, div_pct, price, delta, gamma, vega_per_volpt, theta_per_day, rho_per_pct, phi_per_pct` |
 | `fic sim zcb` | `--model holee\|hullwhite\|vasicek`, `--curve`, `--sigma PCT` (short rate vol per sqrt(year), 1 = 100bp), `--mean-reversion A` (hullwhite), `--spread BP` (added to the curve file spread), `--horizon 10y`, `--steps 120`, `--paths 10000`, `--seed N` (default 1, 0 = time based), `--antithetic`. Columns `t_years, curve_zero_cc_pct, curve_fwd_cc_pct, curve_discount, model_discount, mc_discount, mc_stderr, mc_zero_cc_pct, z_score` |
@@ -144,6 +145,74 @@ Caveats: the OAS depends on the volatility and the mean reversion (more vol mean
 OAS), which are inputs and not observable from the bond; there is no free data source of call schedules (SIX data
 has none), so the terms come from the prospectus; the lattice assumes the curve is dated at the valuation date; puts
 are valued but ignored in the yield to worst. Sample: `data/bonds_callable_example.csv`.
+
+## Portfolio risk
+
+`fic portfolio risk --curve C --in positions.csv [--vol V]` computes the interest rate risk of a portfolio of bonds
+with long and short positions (library: package `portfolio`).
+
+**Input.** The bond CSV of `bond price --in` (`maturity, coupon_pct, price_clean[, id, freq, daycount, face,
+redemption, issuer, rating, call, call_from, put]`) plus the **required column `nominal`**: the position size in
+currency units of face; **negative for a short position or a liability** (the position factor is `nominal / face`).
+A file without a `nominal` column is a usage error (exit 2), a row with an empty, non-numeric or zero nominal is
+excluded. Rows with call or put terms need `--vol` (exit 2 without it). Sample: `data/positions_example.csv`.
+
+**Valuation.** Each position is priced as in the batch `bond price`: the z-spread (OAS for rows with call or put
+terms, on the Hull-White lattice) is solved from the clean market price against the curve and **held constant** in
+every calculation; only the zero curve is bumped or shocked. A row without a price is valued on the curve (spread 0,
+`price_source` = `model`). Rows that fail (bad date, matured, bad nominal, no solution) get the reason in the `status`
+column of `--section positions`, are excluded from every total, and are reported on stderr; the run continues (exit
+0). All rows failing is exit 1 (the first reasons are in the message). With `--strict` the run exits 1 and **prints
+nothing** (an existing `-o` file is left untouched) if a row was excluded or a row was valued on the curve without a
+market price. Without `--strict` a stderr warning names the ids valued on the curve and the duplicate ids (no
+failure). `--curve -` together with `--in -` is a usage error (stdin can be read once). A price that the call/put terms
+cannot reach (e.g. far above the call price) fails the row with an OAS "not bracketed" message and a hint.
+
+**Measures** (per position, group and portfolio; amounts include the factor, in currency units):
+
+- `mv_dirty`, `mv_clean`, `accrued`: market value with and without accrued interest (net of shorts).
+- `mod_duration` (years, positive), `convexity` (years^2): **money-weighted**, `sum(V_i D_i) / sum(V_i)` with the dirty
+  values `V_i` (negative for a short). They are ratios to the *net* value. `gross_mv` = `sum(|V_i|)`. A net value below
+  1e-9 of the gross is set to 0; below 1e-6 of the gross (a hedged book) duration, convexity, `krd_*`, `weight_pct` and
+  `pv_change_pct` are empty (csv) / null (json) / n/a (text) and a stderr warning says to use `dv01` and `key_dv01`.
+  The parallel approximation of the scenarios still works (it uses `sum(V_i D_i)` and `sum(V_i C_i)`). A single short position has the same duration as the
+  long one.
+- `dv01`: change of the value for +1bp parallel (full revaluation, the sign of a long position is negative, a short
+  position is positive).
+- **Key rate durations** `krd_<tenor>` (years) and `key_dv01` (currency per 1bp at the key, `-krd * mv_dirty * 1bp`,
+  first order). The zero rate is bumped by a triangular (hat) function: 1 at the key tenor, linear down to 0 at the
+  neighbouring keys, **flat beyond the first and last key** (cash flows before the first key or after the last key
+  load fully on that key), so the hats sum to 1 and the key rate durations sum to the parallel duration. Central
+  difference of +-1bp (the conventions of `cashflow.KeyRateDurations`). Portfolio `krd_k = -sum(dV_i/dr_k) / sum(V_i)`.
+- **Callable and putable rows** use effective measures: parallel duration, convexity and DV01 as in `bond price`; key
+  rate durations by recalibrating the lattice to the curve bumped with the same hat (central difference of +-10bp,
+  `portfolio.DefaultCallableBump`), the OAS fixed. The lattice value is only piecewise smooth in the bump: in tests
+  the sum of the key rate durations of a 10y bond callable from year 5 is within 0.5% of the effective duration for
+  bumps of 1-10bp and 1% (25bp) to 4% (50bp) above; 10bp is the default.
+
+**Scenarios** are full revaluations of every position (callables: lattice recalibrated to the shocked curve, OAS
+fixed). `--scenarios parallel` shifts the zero curve by `+-s` bp for each `s` of `--shocks`; `--scenarios irrbb` gives
+the six standardised interest rate shock scenarios of the Basel Committee (BCBS d368, 2016), without the floor on the
+shocked rates, with `short(t) = R_short exp(-t/4)` and `long(t) = R_long (1 - exp(-t/4))` (t in years):
+`parallel_up/down = +-R_parallel`, `steepener = -0.65 short(t) + 0.9 long(t)`, `flattener = 0.8 short(t) - 0.6 long(t)`,
+`short_up/down = +-short(t)`. `R_parallel`, `R_short` and `R_long` are currency specific: `--irrbb-parallel`,
+`--irrbb-short`, `--irrbb-long` in bp (defaults 100, 150, 100 are illustrative; **check the current BCBS d368 / FINMA
+values** and the coefficients before using the results for reporting). Per scenario the output has `pv_change` (net
+dirty value, currency), `pv_change_pct` (of the absolute base value, so the sign is the sign of the profit or loss),
+and the approximation from the risk measures next to it: for parallel shifts `dr`, `approx_change = V (-D dr + C dr^2 / 2)`
+(`approx_basis` = `duration_convexity`); for the other shapes the first-order sum over the key rates of
+`key_dv01_k / 1bp * shift(key_k)` (`krd`, no convexity). `approx_error = approx_change - pv_change`.
+
+**Output.** Text (default on a terminal): a summary block, the table by `--group-by` (if given), the key rate table
+(`tenor, years, krd, key_dv01`) and the scenario table (`scenario, pv_change, pv_change_pct, approx_change,
+approx_error, approx_basis`). `--section` selects one table: `summary` (a record: `n_positions, n_excluded, mv_dirty,
+mv_clean, accrued, gross_mv, mod_duration, convexity, dv01`; with `--group-by` one row per group and a final `TOTAL` row with the
+columns `<COLUMN>, n, mv_dirty, mv_clean, accrued, weight_pct, weight_gross_pct, mod_duration, convexity, dv01, krd_<tenor>...`;
+`weight_pct` is the group's share of the net market value, `weight_gross_pct` its net value as a share of `gross_mv`), `krd`, `scenarios` or `positions` (one row per row of the
+file: `id[, issuer][, rating], nominal, price_source, mv_dirty, mv_clean, accrued, spread_bp, mod_duration, convexity,
+dv01, krd_<tenor>..., status`; `spread_bp` is the z-spread of a straight bond and the OAS of a callable one). CSV (the default when not on a terminal) prints one rectangular table, by default
+`positions`. JSON is the whole report (`settlement, summary, groups, krd, scenarios, positions`), or the one section
+with `--section`.
 
 ## Data schemas
 

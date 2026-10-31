@@ -1,0 +1,36 @@
+{
+"settlement": "2021-03-31",
+"summary": {"n_positions": 6, "n_excluded": 0, "mv_dirty": 9959875, "mv_clean": 9933000, "accrued": 26875, "gross_mv": 17999875, "mod_duration": 6.036771304, "convexity": 40.95132195, "dv01": -6010.187429},
+"groups": [
+  {"issuer": "Confederation", "n": 3, "mv_dirty": 10264875, "mv_clean": 10253000, "accrued": 11875, "weight_pct": 103.0622874, "weight_gross_pct": 57.02747936, "mod_duration": 4.951644117, "convexity": 31.37869158, "dv01": -5081.190714, "krd_3m": 0.0003043098596, "krd_6m": 0, "krd_1y": 0.009157428607, "krd_2y": 0.01837044185, "krd_3y": 1.470886315, "krd_5y": 1.396915974, "krd_7y": 0.2115272865, "krd_10y": 1.842487532, "krd_15y": 0.001995209095, "krd_20y": 0, "krd_30y": 0},
+  {"issuer": "Example Corp", "n": 1, "mv_dirty": 1695000, "mv_clean": 1680000, "accrued": 15000, "weight_pct": 17.01828587, "weight_gross_pct": 9.416732061, "mod_duration": 13.47229441, "convexity": 198.7264096, "dv01": -2281.870545, "krd_3m": 0, "krd_6m": 0.008828800074, "krd_1y": 0.01318528756, "krd_2y": 0.03504845722, "krd_3y": 0.0867205429, "krd_5y": 0.1711629585, "krd_7y": 0.3048820866, "krd_10y": 0.6752980524, "krd_15y": 10.98156025, "krd_20y": 1.195611527, "krd_30y": 0},
+  {"issuer": "Example Bank", "n": 1, "mv_dirty": 2020000, "mv_clean": 2020000, "accrued": 0, "weight_pct": 20.28137903, "weight_gross_pct": 11.22230015, "mod_duration": 6.830909736, "convexity": -30.57018423, "dv01": -1379.829502, "krd_3m": 0, "krd_6m": 0, "krd_1y": 0.01962290626, "krd_2y": 0.03888627732, "krd_3y": 0.09564997097, "krd_5y": 2.219348058, "krd_7y": 1.024764549, "krd_10y": 3.432946144, "krd_15y": 0.003386171452, "krd_20y": 0, "krd_30y": 0},
+  {"issuer": "Own Bank", "n": 1, "mv_dirty": -4020000, "mv_clean": -4020000, "accrued": 0, "weight_pct": -40.36195233, "weight_gross_pct": -22.33348843, "mod_duration": 6.800123636, "convexity": 47.09397788, "dv01": 2732.703332, "krd_3m": 0, "krd_6m": 0, "krd_1y": 0.009890647972, "krd_2y": 0.01966046297, "krd_3y": 0.04856824913, "krd_5y": 0.09556069653, "krd_7y": 6.614393114, "krd_10y": 0.01205100599, "krd_15y": 0, "krd_20y": 0, "krd_30y": 0},
+  {"issuer": "TOTAL", "n": 6, "mv_dirty": 9959875, "mv_clean": 9933000, "accrued": 26875, "weight_pct": 100, "weight_gross_pct": 55.33302315, "mod_duration": 6.036771304, "convexity": 40.95132195, "dv01": -6010.187429, "krd_3m": 0.0003136287022, "krd_6m": 0.001502510436, "krd_1y": 0.0116695027, "krd_2y": 0.02484897082, "krd_3y": 1.530483471, "krd_5y": 1.880366786, "krd_7y": -2.191971248, "krd_10y": 2.705218747, "krd_15y": 1.871616387, "krd_20y": 0.2034725876, "krd_30y": 0}
+],
+"krd": [
+  {"tenor": "3m", "years": 0.25, "krd": 0.0003136287022, "key_dv01": -0.3123702671},
+  {"tenor": "6m", "years": 0.5, "krd": 0.001502510436, "key_dv01": -1.496481612},
+  {"tenor": "1y", "years": 1, "krd": 0.0116695027, "key_dv01": -11.62267882},
+  {"tenor": "2y", "years": 2, "krd": 0.02484897082, "key_dv01": -24.74926433},
+  {"tenor": "3y", "years": 3, "krd": 1.530483471, "key_dv01": -1524.342406},
+  {"tenor": "5y", "years": 5, "krd": 1.880366786, "key_dv01": -1872.821815},
+  {"tenor": "7y", "years": 7, "krd": -2.191971248, "key_dv01": 2183.175964},
+  {"tenor": "10y", "years": 10, "krd": 2.705218747, "key_dv01": -2694.364057},
+  {"tenor": "15y", "years": 15, "krd": 1.871616387, "key_dv01": -1864.106526},
+  {"tenor": "20y", "years": 20, "krd": 0.2034725876, "key_dv01": -202.6561539},
+  {"tenor": "30y", "years": 30, "krd": 0, "key_dv01": 0}
+],
+"scenarios": [
+  {"scenario": "parallel +100bp", "pv_change": -581466.0321, "pv_change_pct": -5.83808564, "approx_change": -580861.3735, "approx_error": 604.6586161, "approx_basis": "duration_convexity"},
+  {"scenario": "parallel -100bp", "pv_change": 622549.9164, "pv_change_pct": 6.250579615, "approx_change": 621648.3783, "approx_error": -901.5381189, "approx_basis": "duration_convexity"}
+],
+"positions": [
+  {"id": "CONF3Y", "issuer": "Confederation", "rating": "AAA", "nominal": 5000000, "price_source": "market", "mv_dirty": 5060000, "mv_clean": 5060000, "accrued": 0, "spread_bp": 133.2390862, "mod_duration": 2.973258314, "convexity": 8.888639958, "dv01": -1504.243847, "krd_3m": 0, "krd_6m": 0, "krd_1y": 0.009827501932, "krd_2y": 0.01954541867, "krd_3y": 2.939852718, "krd_5y": 0.004032719717, "krd_7y": 0, "krd_10y": 0, "krd_15y": 0, "krd_20y": 0, "krd_30y": 0, "status": "ok"},
+  {"id": "CONF5Y", "issuer": "Confederation", "rating": "AAA", "nominal": 3000000, "price_source": "market", "mv_dirty": 3074875, "mv_clean": 3063000, "accrued": 11875, "spread_bp": 68.93915245, "mod_duration": 5.137684601, "convexity": 26.65926789, "dv01": -1579.363995, "krd_3m": 0.001015879563, "krd_6m": 0, "krd_1y": 0.004672292726, "krd_2y": 0.009773749259, "krd_3y": 0.02437187014, "krd_5y": 4.561617518, "krd_7y": 0.5362334569, "krd_10y": 0, "krd_15y": 0, "krd_20y": 0, "krd_30y": 0, "status": "ok"},
+  {"id": "CONF10Y", "issuer": "Confederation", "rating": "AAA", "nominal": 2000000, "price_source": "market", "mv_dirty": 2130000, "mv_clean": 2130000, "accrued": 0, "spread_bp": 109.9094569, "mod_duration": 9.382902772, "convexity": 91.6187381, "dv01": -1997.582872, "krd_3m": 0, "krd_6m": 0, "krd_1y": 0.01404036812, "krd_2y": 0.02798939603, "krd_3y": 0.06942204382, "krd_5y": 0.1372575714, "krd_7y": 0.245281833, "krd_10y": 8.879297749, "krd_15y": 0.009615292, "krd_20y": 0, "krd_30y": 0, "status": "ok"},
+  {"id": "CORP15Y", "issuer": "Example Corp", "rating": "A", "nominal": 1500000, "price_source": "market", "mv_dirty": 1695000, "mv_clean": 1680000, "accrued": 15000, "spread_bp": 123.6573546, "mod_duration": 13.47229441, "convexity": 198.7264096, "dv01": -2281.870545, "krd_3m": 0, "krd_6m": 0.008828800074, "krd_1y": 0.01318528756, "krd_2y": 0.03504845722, "krd_3y": 0.0867205429, "krd_5y": 0.1711629585, "krd_7y": 0.3048820866, "krd_10y": 0.6752980524, "krd_15y": 10.98156025, "krd_20y": 1.195611527, "krd_30y": 0, "status": "ok"},
+  {"id": "CALLABLE10Y", "issuer": "Example Bank", "rating": "AA", "nominal": 2000000, "price_source": "market", "mv_dirty": 2020000, "mv_clean": 2020000, "accrued": 0, "spread_bp": 169.3669859, "mod_duration": 6.830909736, "convexity": -30.57018423, "dv01": -1379.829502, "krd_3m": 0, "krd_6m": 0, "krd_1y": 0.01962290626, "krd_2y": 0.03888627732, "krd_3y": 0.09564997097, "krd_5y": 2.219348058, "krd_7y": 1.024764549, "krd_10y": 3.432946144, "krd_15y": 0.003386171452, "krd_20y": 0, "krd_30y": 0, "status": "ok"},
+  {"id": "FUNDING7Y", "issuer": "Own Bank", "rating": "A", "nominal": -4000000, "price_source": "market", "mv_dirty": -4020000, "mv_clean": -4020000, "accrued": 0, "spread_bp": 138.6005149, "mod_duration": 6.800123636, "convexity": 47.09397788, "dv01": 2732.703332, "krd_3m": 0, "krd_6m": 0, "krd_1y": 0.009890647972, "krd_2y": 0.01966046297, "krd_3y": 0.04856824913, "krd_5y": 0.09556069653, "krd_7y": 6.614393114, "krd_10y": 0.01205100599, "krd_15y": 0, "krd_20y": 0, "krd_30y": 0, "status": "ok"}
+]
+}
